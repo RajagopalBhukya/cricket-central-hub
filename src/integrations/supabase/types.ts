@@ -14,16 +14,200 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          booking_date: string
+          created_at: string | null
+          end_time: string
+          ground_id: string
+          hours: number
+          id: string
+          payment_status: Database["public"]["Enums"]["payment_status"] | null
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"] | null
+          timer_end_time: string | null
+          timer_start_time: string | null
+          total_amount: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          booking_date: string
+          created_at?: string | null
+          end_time: string
+          ground_id: string
+          hours: number
+          id?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          start_time: string
+          status?: Database["public"]["Enums"]["booking_status"] | null
+          timer_end_time?: string | null
+          timer_start_time?: string | null
+          total_amount: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          booking_date?: string
+          created_at?: string | null
+          end_time?: string
+          ground_id?: string
+          hours?: number
+          id?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["booking_status"] | null
+          timer_end_time?: string | null
+          timer_start_time?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_ground_id_fkey"
+            columns: ["ground_id"]
+            isOneToOne: false
+            referencedRelation: "grounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grounds: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          location: string | null
+          name: string
+          price_per_hour: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          location?: string | null
+          name: string
+          price_per_hour: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          location?: string | null
+          name?: string
+          price_per_hour?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      password_reset_otps: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          otp: string
+          used: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          otp: string
+          used?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          otp?: string
+          used?: boolean | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          full_name: string
+          id: string
+          phone_number: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          full_name: string
+          id: string
+          phone_number: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          phone_number?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_booking_conflict: {
+        Args: {
+          _booking_date: string
+          _end_time: string
+          _exclude_booking_id?: string
+          _ground_id: string
+          _start_time: string
+        }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      booking_status: "active" | "completed" | "cancelled" | "expired"
+      payment_status: "unpaid" | "paid"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +334,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      booking_status: ["active", "completed", "cancelled", "expired"],
+      payment_status: ["unpaid", "paid"],
+    },
   },
 } as const
