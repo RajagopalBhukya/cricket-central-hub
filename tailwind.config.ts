@@ -57,6 +57,12 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        cricket: {
+          green: "hsl(var(--cricket-green))",
+          dark: "hsl(var(--cricket-dark))",
+          light: "hsl(var(--cricket-light))",
+          accent: "hsl(var(--cricket-accent))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
