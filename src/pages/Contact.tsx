@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import heroImage from "@/assets/box-cricket-bg.jpg";
 
 const Contact = () => {
   const { toast } = useToast();
@@ -27,11 +28,19 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <div
+        className="fixed inset-0 bg-cover bg-center -z-10"
+        style={{
+          backgroundImage: `url(${heroImage})`,
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-accent/30" />
+      </div>
       <Navbar />
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-cricket-green to-cricket-dark text-white py-20">
+      <section className="bg-gradient-to-r from-primary/80 to-accent/80 text-white py-20 mt-16">
         <div className="container mx-auto px-4">
           <h1 className="text-5xl md:text-6xl font-bold mb-6 text-center">Contact Us</h1>
           <p className="text-xl text-center max-w-3xl mx-auto text-white/90">
@@ -44,7 +53,7 @@ const Contact = () => {
       <section className="py-20 container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
           {/* Contact Form */}
-          <Card className="border-2">
+          <Card className="border-2 bg-card/80 backdrop-blur-sm">
             <CardContent className="pt-6">
               <h2 className="text-3xl font-bold mb-6 text-card-foreground">Send us a Message</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,7 +111,7 @@ const Contact = () => {
           <div className="space-y-6">
             <h2 className="text-3xl font-bold mb-6 text-foreground">Get in Touch</h2>
             
-            <Card className="border-2">
+            <Card className="border-2 bg-card/80 backdrop-blur-sm">
               <CardContent className="pt-6">
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -120,7 +129,7 @@ const Contact = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-2">
+            <Card className="border-2 bg-card/80 backdrop-blur-sm">
               <CardContent className="pt-6">
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -137,7 +146,7 @@ const Contact = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-2">
+            <Card className="border-2 bg-card/80 backdrop-blur-sm">
               <CardContent className="pt-6">
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -154,7 +163,7 @@ const Contact = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-2">
+            <Card className="border-2 bg-card/80 backdrop-blur-sm">
               <CardContent className="pt-6">
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -175,11 +184,11 @@ const Contact = () => {
       </section>
 
       {/* Map Section */}
-      <section className="py-20 bg-secondary">
+      <section className="py-20 bg-secondary/80 backdrop-blur-sm">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12 text-foreground">Find Us</h2>
           <div className="max-w-5xl mx-auto">
-            <Card className="overflow-hidden">
+            <Card className="overflow-hidden bg-card/80 backdrop-blur-sm">
               <div className="bg-muted h-96 flex items-center justify-center">
                 <p className="text-muted-foreground">Map location will be displayed here</p>
               </div>
@@ -189,7 +198,7 @@ const Contact = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-card border-t border-border py-8">
+      <footer className="bg-card/80 backdrop-blur-sm border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
           <p>&copy; 2024 Box Cricket. All rights reserved.</p>
         </div>

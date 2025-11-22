@@ -1,14 +1,23 @@
 import Navbar from "@/components/Navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Target, Users, Award, Heart } from "lucide-react";
+import heroImage from "@/assets/box-cricket-bg.jpg";
 
 const About = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      <div
+        className="fixed inset-0 bg-cover bg-center -z-10"
+        style={{
+          backgroundImage: `url(${heroImage})`,
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-accent/30" />
+      </div>
       <Navbar />
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-cricket-green to-cricket-dark text-white py-20">
+      <section className="bg-gradient-to-r from-primary/80 to-accent/80 text-white py-20 mt-16">
         <div className="container mx-auto px-4">
           <h1 className="text-5xl md:text-6xl font-bold mb-6 text-center">About Us</h1>
           <p className="text-xl text-center max-w-3xl mx-auto text-white/90">
@@ -20,7 +29,7 @@ const About = () => {
       {/* Mission & Vision */}
       <section className="py-20 container mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
-          <Card className="border-2">
+          <Card className="border-2 bg-card/80 backdrop-blur-sm">
             <CardContent className="pt-6">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                 <Target className="w-8 h-8 text-primary" />
@@ -32,7 +41,7 @@ const About = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-2">
+          <Card className="border-2 bg-card/80 backdrop-blur-sm">
             <CardContent className="pt-6">
               <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4">
                 <Award className="w-8 h-8 text-accent" />
@@ -47,7 +56,7 @@ const About = () => {
       </section>
 
       {/* Values Section */}
-      <section className="py-20 bg-secondary">
+      <section className="py-20 bg-secondary/80 backdrop-blur-sm">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12 text-foreground">Our Values</h2>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -103,7 +112,7 @@ const About = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 bg-primary text-primary-foreground">
+      <section className="py-20 bg-primary/90 text-primary-foreground backdrop-blur-sm">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div>
@@ -127,7 +136,7 @@ const About = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-card border-t border-border py-8">
+      <footer className="bg-card/80 backdrop-blur-sm border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
           <p>&copy; 2024 Box Cricket. All rights reserved.</p>
         </div>

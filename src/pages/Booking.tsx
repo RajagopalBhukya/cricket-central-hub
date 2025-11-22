@@ -92,9 +92,9 @@ const Booking = () => {
       allSlots.push(`${hour.toString().padStart(2, "0")}:00`);
     }
 
-    // Filter out booked slots
-    const bookedTimes = bookings?.map(b => b.start_time) || [];
-    const available = allSlots.filter(slot => !bookedTimes.includes(slot));
+    // Filter out booked slots - check for any time overlap
+    const bookedTimes = new Set(bookings?.map(b => b.start_time) || []);
+    const available = allSlots.filter(slot => !bookedTimes.has(slot));
     
     setAvailableSlots(available);
   };
@@ -111,6 +111,28 @@ const Booking = () => {
 
     setLoading(true);
 
+    // Double-check availability before booking
+    const formattedDate = format(date, "yyyy-MM-dd");
+    const { data: existingBookings } = await supabase
+      .from("bookings")
+      .select("id")
+      .eq("ground_id", selectedGround)
+      .eq("booking_date", formattedDate)
+      .eq("start_time", selectedTimeSlot.start)
+      .in("status", ["active", "completed"]);
+
+    if (existingBookings && existingBookings.length > 0) {
+      setLoading(false);
+      toast({
+        title: "Slot Already Booked",
+        description: "This time slot was just booked. Please select another slot.",
+        variant: "destructive",
+      });
+      // Refresh availability
+      checkAvailability();
+      return;
+    }
+
     const selectedGroundData = grounds.find(g => g.id === selectedGround);
     const hours = 1; // Default 1 hour booking
     const totalAmount = selectedGroundData ? selectedGroundData.price_per_hour * hours : 0;
@@ -118,7 +140,7 @@ const Booking = () => {
     const { error } = await supabase.from("bookings").insert({
       ground_id: selectedGround,
       user_id: user.id,
-      booking_date: format(date, "yyyy-MM-dd"),
+      booking_date: formattedDate,
       start_time: selectedTimeSlot.start,
       end_time: selectedTimeSlot.end,
       hours,

@@ -8,40 +8,40 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 140 30% 15%;
+    --background: 200 50% 98%;
+    --foreground: 220 15% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 140 30% 15%;
+    --card-foreground: 220 15% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 140 30% 15%;
+    --popover-foreground: 220 15% 10%;
 
-    --primary: 217 91% 60%;
+    --primary: 200 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 217 91% 60%;
+    --secondary: 200 100% 95%;
+    --secondary-foreground: 200 100% 20%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 200 40% 96%;
+    --muted-foreground: 200 10% 40%;
 
-    --accent: 0 84% 60%;
+    --accent: 0 90% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 140 20% 88%;
-    --input: 140 20% 88%;
-    --ring: 142 76% 36%;
+    --border: 200 40% 90%;
+    --input: 200 40% 90%;
+    --ring: 200 100% 50%;
 
     --radius: 0.5rem;
     
-    --cricket-blue: 217 91% 60%;
-    --cricket-dark: 217 91% 35%;
-    --cricket-light: 210 40% 96%;
-    --cricket-red: 0 84% 60%;
+    --cricket-blue: 200 100% 50%;
+    --cricket-dark: 220 15% 10%;
+    --cricket-light: 200 100% 95%;
+    --cricket-red: 0 90% 60%;
 
     --sidebar-background: 0 0% 98%;
 
@@ -61,38 +61,38 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 140 30% 8%;
-    --foreground: 140 15% 95%;
+    --background: 220 15% 10%;
+    --foreground: 200 40% 98%;
 
-    --card: 140 25% 12%;
-    --card-foreground: 140 15% 95%;
+    --card: 220 15% 15%;
+    --card-foreground: 200 40% 98%;
 
-    --popover: 140 25% 12%;
-    --popover-foreground: 140 15% 95%;
+    --popover: 220 15% 15%;
+    --popover-foreground: 200 40% 98%;
 
-    --primary: 217 91% 60%;
+    --primary: 200 100% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 32% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 15% 20%;
+    --secondary-foreground: 200 40% 98%;
 
-    --muted: 217 32% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 15% 20%;
+    --muted-foreground: 200 40% 70%;
 
-    --accent: 0 84% 60%;
+    --accent: 0 90% 65%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 140 20% 18%;
-    --input: 140 20% 18%;
-    --ring: 142 76% 36%;
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 200 100% 55%;
     
-    --cricket-blue: 217 91% 60%;
-    --cricket-dark: 217 91% 35%;
-    --cricket-light: 217 32% 17%;
-    --cricket-red: 0 84% 60%;
+    --cricket-blue: 200 100% 55%;
+    --cricket-dark: 220 15% 10%;
+    --cricket-light: 220 15% 20%;
+    --cricket-red: 0 90% 65%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
