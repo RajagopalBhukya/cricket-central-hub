@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Clock, MapPin, Trophy } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import heroImage from "@/assets/box-cricket-hero.jpg";
+import heroImage from "@/assets/box-cricket-bg.jpg";
 
 const Home = () => {
   return (
@@ -18,7 +18,7 @@ const Home = () => {
             backgroundImage: `url(${heroImage})`,
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-cricket-dark/90 to-cricket-green/70" />
+          <div className="absolute inset-0 bg-gradient-to-r from-cricket-dark/90 to-cricket-blue/70" />
         </div>
         <div className="relative z-10 container mx-auto px-4 text-center">
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 animate-fade-in">
