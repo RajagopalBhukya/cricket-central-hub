@@ -1,97 +1,92 @@
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { LogOut, User as UserIcon, Calendar } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NavLink } from "./NavLink";
+import bcLogo from "@/assets/bc-logo.png";
 
 const Navbar = () => {
-  const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
 
-  const isActive = (path: string) => location.pathname === path;
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
 
-  const navLinks = [
-    { path: "/", label: "Home" },
-    { path: "/about", label: "About" },
-    { path: "/contact", label: "Contact" },
-  ];
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
 
   return (
-    <nav className="bg-card border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-card/95">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">BC</span>
-            </div>
-            <span className="font-bold text-xl text-foreground hidden sm:block">Box Cricket</span>
+          <Link to="/" className="flex items-center space-x-3">
+            <img src={bcLogo} alt="BC Logo" className="h-12 w-12 object-contain" />
+            <span className="text-xl font-bold text-foreground">Box Cricket</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`px-4 py-2 rounded-md transition-colors ${
-                  isActive(link.path)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-secondary"
-                }`}
-              >
-                {link.label}
+          <div className="hidden md:flex items-center space-x-8">
+            <NavLink to="/">Home</NavLink>
+            <NavLink to="/about">About</NavLink>
+            <NavLink to="/contact">Contact</NavLink>
+            {user && <NavLink to="/booking">Book Now</NavLink>}
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar>
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        <UserIcon className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem disabled className="flex flex-col items-start">
+                    <span className="text-sm font-medium">{user.email}</span>
+                    <span className="text-xs text-muted-foreground">Logged in</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/my-bookings")}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    My Bookings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link to="/auth?mode=login">
+                <Button variant="default">Login / Sign Up</Button>
               </Link>
-            ))}
+            )}
           </div>
-
-          {/* Auth Buttons - Desktop */}
-          <div className="hidden md:flex items-center space-x-2">
-            <Link to="/auth?mode=login">
-              <Button variant="ghost">Login</Button>
-            </Link>
-            <Link to="/auth?mode=signup">
-              <Button>Sign Up</Button>
-            </Link>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-foreground"
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 space-y-2 border-t border-border">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2 rounded-md transition-colors ${
-                  isActive(link.path)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-secondary"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="flex flex-col space-y-2 px-4 pt-2">
-              <Link to="/auth?mode=login" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full">
-                  Login
-                </Button>
-              </Link>
-              <Link to="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full">Sign Up</Button>
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );
