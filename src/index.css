@@ -17,17 +17,17 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 140 30% 15%;
 
-    --primary: 142 76% 36%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 140 45% 92%;
-    --secondary-foreground: 140 30% 15%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 217 91% 60%;
 
-    --muted: 140 20% 96%;
-    --muted-foreground: 140 10% 45%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 45 93% 47%;
-    --accent-foreground: 140 30% 15%;
+    --accent: 0 84% 60%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
@@ -38,10 +38,10 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
     
-    --cricket-green: 142 76% 36%;
-    --cricket-dark: 140 50% 25%;
-    --cricket-light: 140 45% 92%;
-    --cricket-accent: 45 93% 47%;
+    --cricket-blue: 217 91% 60%;
+    --cricket-dark: 217 91% 35%;
+    --cricket-light: 210 40% 96%;
+    --cricket-red: 0 84% 60%;
 
     --sidebar-background: 0 0% 98%;
 
@@ -70,17 +70,17 @@ All colors MUST be HSL.
     --popover: 140 25% 12%;
     --popover-foreground: 140 15% 95%;
 
-    --primary: 142 76% 36%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 140 20% 18%;
-    --secondary-foreground: 140 15% 95%;
+    --secondary: 217 32% 17%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 140 20% 18%;
-    --muted-foreground: 140 10% 65%;
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 45 93% 47%;
-    --accent-foreground: 140 30% 8%;
+    --accent: 0 84% 60%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 45%;
     --destructive-foreground: 0 0% 100%;
@@ -89,10 +89,10 @@ All colors MUST be HSL.
     --input: 140 20% 18%;
     --ring: 142 76% 36%;
     
-    --cricket-green: 142 76% 36%;
-    --cricket-dark: 140 50% 25%;
-    --cricket-light: 140 20% 18%;
-    --cricket-accent: 45 93% 47%;
+    --cricket-blue: 217 91% 60%;
+    --cricket-dark: 217 91% 35%;
+    --cricket-light: 217 32% 17%;
+    --cricket-red: 0 84% 60%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
