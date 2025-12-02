@@ -15,6 +15,7 @@ interface Ground {
   id: string;
   name: string;
   location: string;
+  description?: string;
   price_per_hour: number;
   image_url: string | null;
 }
@@ -86,9 +87,9 @@ const Booking = () => {
       return;
     }
 
-    // Generate time slots from 6 AM to 11 PM
+    // Generate time slots from 7 AM to 11 PM
     const allSlots = [];
-    for (let hour = 6; hour <= 22; hour++) {
+    for (let hour = 7; hour <= 23; hour++) {
       allSlots.push(`${hour.toString().padStart(2, "0")}:00`);
     }
 
@@ -193,11 +194,35 @@ const Booking = () => {
                 <SelectContent>
                   {grounds.map((ground) => (
                     <SelectItem key={ground.id} value={ground.id}>
-                      {ground.name} - ₹{ground.price_per_hour}/hr
+                      <div>
+                        <div className="font-semibold">{ground.name} - ₹{ground.price_per_hour}/hr</div>
+                        {ground.location && (
+                          <div className="text-xs text-muted-foreground">{ground.location}</div>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
+              {selectedGround && grounds.find(g => g.id === selectedGround) && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-2">
+                  <h3 className="font-semibold text-lg">{grounds.find(g => g.id === selectedGround)?.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {grounds.find(g => g.id === selectedGround)?.description}
+                  </p>
+                  {grounds.find(g => g.id === selectedGround)?.location && (
+                    <a 
+                      href="https://www.google.com/maps/dir//31-40-30,+near+Rajeev+Nagar,+Vuda+Phase+1,+Kurmannapalem,+Visakhapatnam,+Andhra+Pradesh+530046/@17.7037386,83.1541787,15z/data=!4m8!4m7!1m0!1m5!1m1!1s0x3a396f04f1a405c1:0x1dd0df99771a5061!2m2!1d83.1578806!2d17.7006808?entry=ttu&g_ep=EgoyMDI1MTEyMy4xIKXMDSoASAFQAw%3D%3D"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline flex items-center gap-1"
+                    >
+                      📍 {grounds.find(g => g.id === selectedGround)?.location}
+                    </a>
+                  )}
+                </div>
+              )}
 
               {selectedGround && (
                 <div className="space-y-4">

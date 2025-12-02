@@ -58,7 +58,7 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
         cricket: {
-          blue: "hsl(var(--cricket-blue))",
+          green: "hsl(var(--cricket-green))",
           dark: "hsl(var(--cricket-dark))",
           light: "hsl(var(--cricket-light))",
           red: "hsl(var(--cricket-red))",
