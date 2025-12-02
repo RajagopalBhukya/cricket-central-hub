@@ -8,23 +8,23 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 200 50% 98%;
-    --foreground: 220 15% 10%;
+    --background: 120 50% 98%;
+    --foreground: 140 15% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 15% 10%;
+    --card-foreground: 140 15% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 10%;
+    --popover-foreground: 140 15% 10%;
 
-    --primary: 200 100% 50%;
+    --primary: 142 76% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 200 100% 95%;
-    --secondary-foreground: 200 100% 20%;
+    --secondary: 120 50% 95%;
+    --secondary-foreground: 140 60% 20%;
 
-    --muted: 200 40% 96%;
-    --muted-foreground: 200 10% 40%;
+    --muted: 120 40% 96%;
+    --muted-foreground: 120 20% 40%;
 
     --accent: 0 90% 60%;
     --accent-foreground: 0 0% 100%;
@@ -32,15 +32,15 @@ All colors MUST be HSL.
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 200 40% 90%;
-    --input: 200 40% 90%;
-    --ring: 200 100% 50%;
+    --border: 120 40% 90%;
+    --input: 120 40% 90%;
+    --ring: 142 76% 45%;
 
     --radius: 0.5rem;
     
-    --cricket-blue: 200 100% 50%;
-    --cricket-dark: 220 15% 10%;
-    --cricket-light: 200 100% 95%;
+    --cricket-green: 142 76% 45%;
+    --cricket-dark: 140 15% 10%;
+    --cricket-light: 120 50% 95%;
     --cricket-red: 0 90% 60%;
 
     --sidebar-background: 0 0% 98%;
@@ -61,23 +61,23 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 220 15% 10%;
-    --foreground: 200 40% 98%;
+    --background: 140 20% 10%;
+    --foreground: 120 40% 98%;
 
-    --card: 220 15% 15%;
-    --card-foreground: 200 40% 98%;
+    --card: 140 20% 15%;
+    --card-foreground: 120 40% 98%;
 
-    --popover: 220 15% 15%;
-    --popover-foreground: 200 40% 98%;
+    --popover: 140 20% 15%;
+    --popover-foreground: 120 40% 98%;
 
-    --primary: 200 100% 55%;
+    --primary: 142 76% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 20%;
-    --secondary-foreground: 200 40% 98%;
+    --secondary: 140 20% 20%;
+    --secondary-foreground: 120 40% 98%;
 
-    --muted: 220 15% 20%;
-    --muted-foreground: 200 40% 70%;
+    --muted: 140 20% 20%;
+    --muted-foreground: 120 40% 70%;
 
     --accent: 0 90% 65%;
     --accent-foreground: 0 0% 100%;
@@ -85,13 +85,13 @@ All colors MUST be HSL.
     --destructive: 0 62.8% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 200 100% 55%;
+    --border: 140 20% 20%;
+    --input: 140 20% 20%;
+    --ring: 142 76% 55%;
     
-    --cricket-blue: 200 100% 55%;
-    --cricket-dark: 220 15% 10%;
-    --cricket-light: 220 15% 20%;
+    --cricket-green: 142 76% 55%;
+    --cricket-dark: 140 15% 10%;
+    --cricket-light: 140 20% 20%;
     --cricket-red: 0 90% 65%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
