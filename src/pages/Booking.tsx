@@ -161,13 +161,21 @@ const Booking = () => {
       return;
     }
 
+    const bookingData = await supabase
+      .from("bookings")
+      .select("id")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
     toast({
       title: "Booking Successful!",
       description: "Your ground has been booked successfully.",
     });
 
     dispatch(clearSelection());
-    navigate("/");
+    navigate(`/booking-success?id=${bookingData.data?.id}`);
   };
 
   return (
