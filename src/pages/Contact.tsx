@@ -8,33 +8,33 @@ import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import heroImage from "@/assets/box-cricket-bg.jpg";
-
 const Contact = () => {
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    message: "",
+    message: ""
   });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
       title: "Message Sent!",
-      description: "We'll get back to you within 24 hours.",
+      description: "We'll get back to you within 24 hours."
     });
-    setFormData({ name: "", email: "", phone: "", message: "" });
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      message: ""
+    });
   };
-
-  return (
-    <div className="min-h-screen bg-background relative">
-      <div
-        className="fixed inset-0 bg-cover bg-center -z-10"
-        style={{
-          backgroundImage: `url(${heroImage})`,
-        }}
-      >
+  return <div className="min-h-screen bg-background relative">
+      <div className="fixed inset-0 bg-cover bg-center -z-10" style={{
+      backgroundImage: `url(${heroImage})`
+    }}>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-accent/30" />
       </div>
       <Navbar />
@@ -59,46 +59,31 @@ const Contact = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="John Doe"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
+                  <Input id="name" placeholder="John Doe" value={formData.name} onChange={e => setFormData({
+                  ...formData,
+                  name: e.target.value
+                })} required />
                 </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
+                  <Input id="email" type="email" placeholder="john@example.com" value={formData.email} onChange={e => setFormData({
+                  ...formData,
+                  email: e.target.value
+                })} required />
                 </div>
                 <div>
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+91 98765 43210"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    required
-                  />
+                  <Input id="phone" type="tel" placeholder="+91 98765 43210" value={formData.phone} onChange={e => setFormData({
+                  ...formData,
+                  phone: e.target.value
+                })} required />
                 </div>
                 <div>
                   <Label htmlFor="message">Message</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Tell us how we can help you..."
-                    rows={5}
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    required
-                  />
+                  <Textarea id="message" placeholder="Tell us how we can help you..." rows={5} value={formData.message} onChange={e => setFormData({
+                  ...formData,
+                  message: e.target.value
+                })} required />
                 </div>
                 <Button type="submit" className="w-full" size="lg">
                   Send Message
@@ -119,8 +104,9 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Address</h3>
-                    <p className="text-muted-foreground">
-                      123 Cricket Avenue,<br />
+                    <p className="text-muted-foreground">Stumps Drive In ,Beside Duvvada Bridge
+Rajeeve Nagar road, City 560001
+Visakhapattnam, India<br />
                       Sports Complex, City 560001<br />
                       Karnataka, India
                     </p>
@@ -203,8 +189,6 @@ const Contact = () => {
           <p>&copy; 2024 Box Cricket. All rights reserved.</p>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Contact;
