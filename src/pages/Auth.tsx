@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Session, User } from "@supabase/supabase-js";
 import Navbar from "@/components/Navbar";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
-  const initialMode = searchParams.get("mode") === "login" ? "login" : "signup";
+  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [loading, setLoading] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -23,14 +25,28 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/");
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (session) {
+          // Use setTimeout to defer navigation to avoid auth deadlock
+          setTimeout(() => {
+            navigate("/", { replace: true });
+          }, 0);
+        }
       }
-    };
-    checkSession();
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        navigate("/", { replace: true });
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +55,7 @@ const Auth = () => {
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
@@ -53,11 +69,19 @@ const Auth = () => {
 
         if (error) throw error;
 
-        toast({
-          title: "Account created!",
-          description: "Welcome to Box Cricket. You can now start booking grounds.",
-        });
-        navigate("/");
+        // Check if user was created (auto-confirm enabled)
+        if (data.user && data.session) {
+          toast({
+            title: "Account created!",
+            description: "Welcome to Box Cricket. You can now start booking grounds.",
+          });
+        } else if (data.user && !data.session) {
+          // Email confirmation required
+          toast({
+            title: "Check your email",
+            description: "We sent you a confirmation link to complete signup.",
+          });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: formData.email,
@@ -70,18 +94,36 @@ const Auth = () => {
           title: "Welcome back!",
           description: "You have successfully logged in.",
         });
-        navigate("/");
       }
     } catch (error: any) {
+      let errorMessage = "Something went wrong. Please try again.";
+      
+      if (error.message?.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password. Please try again.";
+      } else if (error.message?.includes("User already registered")) {
+        errorMessage = "This email is already registered. Please login instead.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "Error",
-        description: error.message || "Something went wrong. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  // Don't render the form if already authenticated
+  if (session) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Redirecting...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -150,6 +192,7 @@ const Auth = () => {
                     id="password"
                     type="password"
                     placeholder="••••••••"
+                    minLength={6}
                     value={formData.password}
                     onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
@@ -168,6 +211,7 @@ const Auth = () => {
 
               <div className="mt-6 text-center">
                 <button
+                  type="button"
                   onClick={() => setMode(mode === "login" ? "signup" : "login")}
                   className="text-primary hover:underline"
                 >
