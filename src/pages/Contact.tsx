@@ -175,9 +175,16 @@ Visakhapattnam, India<br />
           <h2 className="text-4xl font-bold text-center mb-12 text-foreground">Find Us</h2>
           <div className="max-w-5xl mx-auto">
             <Card className="overflow-hidden bg-card/80 backdrop-blur-sm">
-              <div className="bg-muted h-96 flex items-center justify-center">
-                <p className="text-muted-foreground">Map location will be displayed here</p>
-              </div>
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d950.6!2d83.1578934!3d17.7006083!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a396f8a3b96c05d%3A0x353d26024494d2e6!2sShake%20Aadistha!5e0!3m2!1sen!2sin!4v1701782400000!5m2!1sen!2sin"
+                width="100%"
+                height="384"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="rounded-lg"
+              />
             </Card>
           </div>
         </div>
