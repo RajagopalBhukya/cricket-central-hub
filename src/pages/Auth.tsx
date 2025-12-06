@@ -14,9 +14,9 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginSchema, signupSchema, LoginFormData, SignupFormData } from "@/lib/validations/auth";
 
 const Auth = () => {
-  const [searchParams] = useSearchParams();
-  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
-  const [mode, setMode] = useState<"login" | "signup">(initialMode);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const modeFromUrl = searchParams.get("mode") === "signup" ? "signup" : "login";
+  const [mode, setMode] = useState<"login" | "signup">(modeFromUrl);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -29,6 +29,7 @@ const Auth = () => {
       email: "",
       password: "",
     },
+    mode: "onChange",
   });
 
   const signupForm = useForm<SignupFormData>({
@@ -39,7 +40,26 @@ const Auth = () => {
       fullName: "",
       phoneNumber: "",
     },
+    mode: "onChange",
   });
+
+  // Sync mode with URL params
+  useEffect(() => {
+    setMode(modeFromUrl);
+  }, [modeFromUrl]);
+
+  // Handle mode switching with URL update
+  const handleModeSwitch = () => {
+    const newMode = mode === "login" ? "signup" : "login";
+    setMode(newMode);
+    setSearchParams({ mode: newMode });
+    setShowPassword(false);
+    if (newMode === "login") {
+      loginForm.reset();
+    } else {
+      signupForm.reset();
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -347,8 +367,8 @@ const Auth = () => {
               <div className="mt-6 text-center">
                 <button
                   type="button"
-                  onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                  className="text-primary hover:underline"
+                  onClick={handleModeSwitch}
+                  className="text-primary hover:underline font-medium"
                 >
                   {mode === "login"
                     ? "Don't have an account? Sign up"
