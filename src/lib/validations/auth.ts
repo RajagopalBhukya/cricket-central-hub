@@ -31,9 +31,10 @@ export const signupSchema = z.object({
     .trim(),
   phoneNumber: z
     .string()
-    .min(1, 'Phone number is required')
+    .min(10, 'Phone number must be at least 10 digits')
+    .max(15, 'Phone number must be less than 15 digits')
     .regex(
-      /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/,
+      /^[\+]?[0-9\s\-\(\)]{10,15}$/,
       'Please enter a valid phone number'
     ),
 });

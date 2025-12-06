@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { LogOut, User as UserIcon, Calendar, Shield } from "lucide-react";
+import { LogOut, User as UserIcon, Calendar, Shield, Menu, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import bcLogo from "@/assets/bc-logo.png";
 const Navbar = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -66,6 +67,7 @@ const Navbar = () => {
             <span className="text-xl font-bold text-foreground">Box Cricket</span>
           </Link>
 
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <NavLink to="/">Home</NavLink>
             <NavLink to="/about">About</NavLink>
@@ -74,6 +76,16 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Mobile Menu Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -108,11 +120,49 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <Link to="/auth?mode=login">
-                <Button variant="default">Login / Sign Up</Button>
+                <Button variant="default" size="sm">Login</Button>
               </Link>
             )}
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden py-4 border-t border-border">
+            <div className="flex flex-col space-y-3">
+              <Link
+                to="/"
+                className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Home
+              </Link>
+              <Link
+                to="/about"
+                className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                About
+              </Link>
+              <Link
+                to="/contact"
+                className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Contact
+              </Link>
+              {user && (
+                <Link
+                  to="/booking"
+                  className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Book Now
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
