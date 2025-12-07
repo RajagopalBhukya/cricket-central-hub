@@ -272,8 +272,14 @@ const Auth = () => {
                           <FormLabel>Full Name</FormLabel>
                           <FormControl>
                             <Input
+                              type="text"
                               placeholder="John Doe"
-                              {...field}
+                              autoComplete="name"
+                              value={field.value}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
                             />
                           </FormControl>
                           <FormMessage />
@@ -291,7 +297,12 @@ const Auth = () => {
                             <Input
                               type="tel"
                               placeholder="+91 98765 43210"
-                              {...field}
+                              autoComplete="tel"
+                              value={field.value}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
                             />
                           </FormControl>
                           <FormMessage />
@@ -309,7 +320,12 @@ const Auth = () => {
                             <Input
                               type="email"
                               placeholder="john@example.com"
-                              {...field}
+                              autoComplete="email"
+                              value={field.value}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
                             />
                           </FormControl>
                           <FormMessage />
@@ -328,7 +344,12 @@ const Auth = () => {
                               <Input
                                 type={showPassword ? "text" : "password"}
                                 placeholder="••••••••"
-                                {...field}
+                                autoComplete="new-password"
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                name={field.name}
+                                ref={field.ref}
                               />
                               <Button
                                 type="button"
