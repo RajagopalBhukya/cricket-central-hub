@@ -122,6 +122,27 @@ const Auth = () => {
   const handleSignup = async (data: SignupFormData) => {
     setLoading(true);
     try {
+      // Check if phone number already exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from("profiles")
+        .select("phone_number")
+        .eq("phone_number", data.phoneNumber)
+        .maybeSingle();
+
+      if (checkError && !checkError.message.includes("No rows found")) {
+        console.error("Error checking phone number:", checkError);
+      }
+
+      if (existingProfile) {
+        toast({
+          title: "Phone number already registered",
+          description: "This phone number is already associated with an account. Please use a different number or login.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -154,6 +175,10 @@ const Auth = () => {
       
       if (error.message?.includes("User already registered")) {
         errorMessage = "This email is already registered. Please login instead.";
+      } else if (error.message?.includes("duplicate key") || error.message?.includes("profiles_phone_number_key")) {
+        errorMessage = "This phone number is already registered. Please use a different number.";
+      } else if (error.message?.includes("Database error saving new user")) {
+        errorMessage = "This phone number or email may already be in use. Please try different credentials.";
       } else if (error.message) {
         errorMessage = error.message;
       }
