@@ -138,36 +138,32 @@ const Booking = () => {
     const hours = 1; // Default 1 hour booking
     const totalAmount = selectedGroundData ? selectedGroundData.price_per_hour * hours : 0;
 
-    const { error } = await supabase.from("bookings").insert({
-      ground_id: selectedGround,
-      user_id: user.id,
-      booking_date: formattedDate,
-      start_time: selectedTimeSlot.start,
-      end_time: selectedTimeSlot.end,
-      hours,
-      total_amount: totalAmount,
-      status: "active",
-      payment_status: "unpaid",
-    });
+    const { data: insertedBooking, error } = await supabase
+      .from("bookings")
+      .insert({
+        ground_id: selectedGround,
+        user_id: user.id,
+        booking_date: formattedDate,
+        start_time: selectedTimeSlot.start,
+        end_time: selectedTimeSlot.end,
+        hours,
+        total_amount: totalAmount,
+        status: "active",
+        payment_status: "unpaid",
+      })
+      .select("id")
+      .single();
 
     setLoading(false);
 
-    if (error) {
+    if (error || !insertedBooking) {
       toast({
         title: "Booking Failed",
-        description: error.message,
+        description: error?.message || "Failed to create booking",
         variant: "destructive",
       });
       return;
     }
-
-    const bookingData = await supabase
-      .from("bookings")
-      .select("id")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
 
     toast({
       title: "Booking Successful!",
@@ -175,7 +171,7 @@ const Booking = () => {
     });
 
     dispatch(clearSelection());
-    navigate(`/booking-success?id=${bookingData.data?.id}`);
+    navigate(`/booking-success?id=${insertedBooking.id}`);
   };
 
   return (
