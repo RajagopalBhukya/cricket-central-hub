@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { LogOut, User as UserIcon, Calendar, Shield, Menu, X } from "lucide-react";
+import { LogOut, User as UserIcon, Calendar, Shield, Menu, X, LayoutDashboard } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,6 +20,7 @@ const Navbar = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -58,6 +60,8 @@ const Navbar = () => {
     navigate("/");
   };
 
+  const isOnAdminPage = location.pathname.startsWith("/admin");
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4">
@@ -72,7 +76,7 @@ const Navbar = () => {
             <NavLink to="/">Home</NavLink>
             <NavLink to="/about">About</NavLink>
             <NavLink to="/contact">Contact</NavLink>
-            {user && <NavLink to="/booking">Book Now</NavLink>}
+            {user && <NavLink to="/user/booking">Book Now</NavLink>}
           </div>
 
           <div className="flex items-center space-x-4">
@@ -100,18 +104,36 @@ const Navbar = () => {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem disabled className="flex flex-col items-start">
                     <span className="text-sm font-medium">{user.email}</span>
-                    <span className="text-xs text-muted-foreground">Logged in</span>
+                    <span className="text-xs text-muted-foreground">
+                      {isAdmin ? "Admin" : "User"}
+                    </span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/my-bookings")}>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/user/booking")}>
                     <Calendar className="mr-2 h-4 w-4" />
+                    Book a Slot
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <UserIcon className="mr-2 h-4 w-4" />
                     My Bookings
                   </DropdownMenuItem>
                   {isAdmin && (
-                    <DropdownMenuItem onClick={() => navigate("/admin")}>
-                      <Shield className="mr-2 h-4 w-4" />
-                      Admin Dashboard
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuSeparator />
+                      {isOnAdminPage ? (
+                        <DropdownMenuItem onClick={() => navigate("/user/booking")}>
+                          <UserIcon className="mr-2 h-4 w-4" />
+                          Switch to User View
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          Admin Dashboard
+                        </DropdownMenuItem>
+                      )}
+                    </>
                   )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
@@ -120,11 +142,14 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <div className="flex items-center space-x-2">
-                <Link to="/auth?mode=signup">
-                  <Button variant="outline" size="sm">Sign Up</Button>
-                </Link>
-                <Link to="/auth?mode=login">
+                <Link to="/auth">
                   <Button variant="default" size="sm">Login</Button>
+                </Link>
+                <Link to="/admin/login">
+                  <Button variant="outline" size="sm">
+                    <Shield className="h-4 w-4 mr-1" />
+                    Admin
+                  </Button>
                 </Link>
               </div>
             )}
@@ -157,28 +182,46 @@ const Navbar = () => {
                 Contact
               </Link>
               {user ? (
-                <Link
-                  to="/booking"
-                  className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Book Now
-                </Link>
-              ) : (
                 <>
                   <Link
-                    to="/auth?mode=signup"
-                    className="px-4 py-2 text-primary font-medium hover:bg-muted rounded-md"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Sign Up
-                  </Link>
-                  <Link
-                    to="/auth?mode=login"
+                    to="/user/booking"
                     className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
                     onClick={() => setMobileMenuOpen(false)}
                   >
+                    Book Now
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    My Bookings
+                  </Link>
+                  {isAdmin && (
+                    <Link
+                      to="/admin/dashboard"
+                      className="px-4 py-2 text-primary font-medium hover:bg-muted rounded-md"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Admin Dashboard
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/auth"
+                    className="px-4 py-2 text-primary font-medium hover:bg-muted rounded-md"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
                     Login
+                  </Link>
+                  <Link
+                    to="/admin/login"
+                    className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Admin Login
                   </Link>
                 </>
               )}
