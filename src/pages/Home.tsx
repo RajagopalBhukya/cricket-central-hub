@@ -28,7 +28,7 @@ const Home = () => {
             Premium cricket grounds available 24/7. Book in minutes, play in style.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/booking">
+            <Link to="/auth">
               <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-lg px-8">
                 Book Now
               </Button>
@@ -107,9 +107,9 @@ const Home = () => {
           <p className="text-xl mb-8 max-w-2xl mx-auto opacity-90">
             Join thousands of cricket enthusiasts who trust us for their box cricket needs.
           </p>
-          <Link to="/auth?mode=signup">
+          <Link to="/auth">
             <Button size="lg" variant="secondary" className="text-lg px-8">
-              Get Started Today
+              Login to Book
             </Button>
           </Link>
         </div>
