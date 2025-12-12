@@ -45,6 +45,7 @@ interface User {
   full_name: string;
   phone_number: string;
   created_at: string;
+  email?: string;
 }
 
 interface Booking {
@@ -91,6 +92,8 @@ const AdminDashboard = () => {
   });
   const [isAddGroundOpen, setIsAddGroundOpen] = useState(false);
   const [isEditGroundOpen, setIsEditGroundOpen] = useState(false);
+  const [isDeleteUserOpen, setIsDeleteUserOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const navigate = useNavigate();
 
@@ -336,6 +339,45 @@ const AdminDashboard = () => {
     } else {
       toast({ title: "Success", description: `Ground ${is_active ? "enabled" : "disabled"}` });
       fetchGrounds();
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    // First delete user's bookings
+    const { error: bookingsError } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("user_id", userId);
+
+    if (bookingsError) {
+      toast({ title: "Error", description: "Failed to delete user bookings", variant: "destructive" });
+      return;
+    }
+
+    // Delete user roles
+    const { error: rolesError } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId);
+
+    if (rolesError) {
+      toast({ title: "Error", description: "Failed to delete user roles", variant: "destructive" });
+      return;
+    }
+
+    // Delete profile
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+
+    if (profileError) {
+      toast({ title: "Error", description: profileError.message, variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "User and all their data deleted successfully" });
+      setIsDeleteUserOpen(false);
+      setUserToDelete(null);
+      fetchAllData();
     }
   };
 
@@ -701,30 +743,69 @@ const AdminDashboard = () => {
 
               <Card>
                 <CardContent className="pt-6">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Joined</TableHead>
-                        <TableHead>Total Bookings</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.full_name}</TableCell>
-                          <TableCell>{user.phone_number}</TableCell>
-                          <TableCell>{format(new Date(user.created_at), "PPP")}</TableCell>
-                          <TableCell>
-                            {bookings.filter(b => b.user_id === user.id).length}
-                          </TableCell>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Joined</TableHead>
+                          <TableHead>Total Bookings</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredUsers.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.full_name}</TableCell>
+                            <TableCell>{user.phone_number}</TableCell>
+                            <TableCell>{format(new Date(user.created_at), "PPP")}</TableCell>
+                            <TableCell>
+                              {bookings.filter(b => b.user_id === user.id).length}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => {
+                                  setUserToDelete(user);
+                                  setIsDeleteUserOpen(true);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" /> Delete
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
+
+              {/* Delete User Confirmation Dialog */}
+              <Dialog open={isDeleteUserOpen} onOpenChange={setIsDeleteUserOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete User</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-muted-foreground">
+                    Are you sure you want to delete user <strong>{userToDelete?.full_name}</strong>? 
+                    This will also delete all their bookings and cannot be undone.
+                  </p>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDeleteUserOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => userToDelete && deleteUser(userToDelete.id)}
+                    >
+                      Delete User
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 

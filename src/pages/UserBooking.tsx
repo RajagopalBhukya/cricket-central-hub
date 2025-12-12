@@ -25,6 +25,7 @@ interface TimeSlot {
   start: string;
   end: string;
   available: boolean;
+  isPast: boolean;
 }
 
 interface UserProfile {
@@ -39,11 +40,12 @@ const UserBooking = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const { selectedDate, selectedGround, selectedTimeSlot } = useAppSelector((state) => state.booking);
+  const { selectedDate, selectedGround } = useAppSelector((state) => state.booking);
 
   useEffect(() => {
     checkAuth();
@@ -111,13 +113,19 @@ const UserBooking = () => {
 
   const generateTimeSlots = (): TimeSlot[] => {
     const slots: TimeSlot[] = [];
+    const now = new Date();
+    const isToday = selectedDate && format(new Date(selectedDate), "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
+    const currentHour = now.getHours();
+
     for (let hour = 6; hour < 23; hour++) {
       const start = `${hour.toString().padStart(2, "0")}:00`;
       const end = `${(hour + 1).toString().padStart(2, "0")}:00`;
       const isBooked = bookedSlots.some(
         (slot) => slot.start_time === start || (slot.start_time < end && slot.end_time > start)
       );
-      slots.push({ start, end, available: !isBooked });
+      // Mark slot as past if it's today and the hour has passed
+      const isPast = isToday && hour <= currentHour;
+      slots.push({ start, end, available: !isBooked && !isPast, isPast });
     }
     return slots;
   };
@@ -125,26 +133,33 @@ const UserBooking = () => {
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       dispatch(setSelectedDate(date.toISOString()));
-      dispatch(setSelectedTimeSlot(null));
+      setSelectedSlots([]);
     }
   };
 
   const handleGroundSelect = (groundId: string) => {
     dispatch(setSelectedGround(groundId));
-    dispatch(setSelectedTimeSlot(null));
+    setSelectedSlots([]);
   };
 
   const handleTimeSlotSelect = (slot: TimeSlot) => {
-    if (slot.available) {
-      dispatch(setSelectedTimeSlot({ start: slot.start, end: slot.end }));
+    if (!slot.available) return;
+    
+    // Check if already selected
+    const isAlreadySelected = selectedSlots.some(s => s.start === slot.start);
+    
+    if (isAlreadySelected) {
+      setSelectedSlots(selectedSlots.filter(s => s.start !== slot.start));
+    } else {
+      setSelectedSlots([...selectedSlots, slot]);
     }
   };
 
   const handleBooking = async () => {
-    if (!selectedGround || !selectedDate || !selectedTimeSlot || !user) {
+    if (!selectedGround || !selectedDate || selectedSlots.length === 0 || !user) {
       toast({
         title: "Missing Information",
-        description: "Please select a ground, date, and time slot.",
+        description: "Please select a ground, date, and at least one time slot.",
         variant: "destructive",
       });
       return;
@@ -154,31 +169,31 @@ const UserBooking = () => {
 
     const formattedDate = format(new Date(selectedDate), "yyyy-MM-dd");
     const selectedGroundData = grounds.find((g) => g.id === selectedGround);
-    const hours = 1;
-    const totalAmount = selectedGroundData ? selectedGroundData.price_per_hour * hours : 0;
+    
+    // Create bookings for all selected slots
+    const bookings = selectedSlots.map(slot => ({
+      ground_id: selectedGround,
+      user_id: user.id,
+      booking_date: formattedDate,
+      start_time: slot.start,
+      end_time: slot.end,
+      hours: 1,
+      total_amount: selectedGroundData ? selectedGroundData.price_per_hour : 0,
+      status: "active" as const,
+      payment_status: "unpaid" as const,
+    }));
 
-    const { data: insertedBooking, error } = await supabase
+    const { data: insertedBookings, error } = await supabase
       .from("bookings")
-      .insert({
-        ground_id: selectedGround,
-        user_id: user.id,
-        booking_date: formattedDate,
-        start_time: selectedTimeSlot.start,
-        end_time: selectedTimeSlot.end,
-        hours,
-        total_amount: totalAmount,
-        status: "active",
-        payment_status: "unpaid",
-      })
-      .select("id")
-      .single();
+      .insert(bookings)
+      .select("id");
 
     setBookingLoading(false);
 
-    if (error || !insertedBooking) {
+    if (error || !insertedBookings || insertedBookings.length === 0) {
       toast({
         title: "Booking Failed",
-        description: error?.message || "Failed to create booking",
+        description: error?.message || "Failed to create booking(s)",
         variant: "destructive",
       });
       return;
@@ -186,11 +201,12 @@ const UserBooking = () => {
 
     toast({
       title: "Booking Successful!",
-      description: "Your slot has been booked successfully.",
+      description: `${selectedSlots.length} slot(s) have been booked successfully.`,
     });
 
     dispatch(clearSelection());
-    navigate(`/booking-success?id=${insertedBooking.id}`);
+    setSelectedSlots([]);
+    navigate(`/booking-success?id=${insertedBookings[0].id}&count=${insertedBookings.length}`);
   };
 
   const handleLogout = async () => {
@@ -200,6 +216,7 @@ const UserBooking = () => {
 
   const selectedGroundData = grounds.find((g) => g.id === selectedGround);
   const timeSlots = generateTimeSlots();
+  const totalAmount = selectedGroundData ? selectedGroundData.price_per_hour * selectedSlots.length : 0;
 
   if (loading) {
     return (
@@ -304,24 +321,31 @@ const UserBooking = () => {
             {selectedGround && selectedDate ? (
               <Card>
                 <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Select multiple slots to book at once
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
-                    {timeSlots.map((slot) => (
-                      <Button
-                        key={slot.start}
-                        variant={
-                          selectedTimeSlot?.start === slot.start
-                            ? "default"
-                            : slot.available
-                            ? "outline"
-                            : "secondary"
-                        }
-                        disabled={!slot.available}
-                        onClick={() => handleTimeSlotSelect(slot)}
-                        className="text-sm"
-                      >
-                        {slot.start} - {slot.end}
-                      </Button>
-                    ))}
+                    {timeSlots.map((slot) => {
+                      const isSelected = selectedSlots.some(s => s.start === slot.start);
+                      return (
+                        <Button
+                          key={slot.start}
+                          variant={
+                            isSelected
+                              ? "default"
+                              : slot.available
+                              ? "outline"
+                              : "secondary"
+                          }
+                          disabled={!slot.available}
+                          onClick={() => handleTimeSlotSelect(slot)}
+                          className={`text-sm ${slot.isPast ? "line-through opacity-50" : ""}`}
+                        >
+                          {slot.start} - {slot.end}
+                          {slot.isPast && " (Past)"}
+                        </Button>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -336,10 +360,10 @@ const UserBooking = () => {
         </div>
 
         {/* Booking Summary */}
-        {selectedGroundData && selectedDate && selectedTimeSlot && (
+        {selectedGroundData && selectedDate && selectedSlots.length > 0 && (
           <Card className="mt-8">
             <CardHeader>
-              <CardTitle>Booking Summary</CardTitle>
+              <CardTitle>Booking Summary ({selectedSlots.length} slot{selectedSlots.length > 1 ? "s" : ""})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -352,15 +376,22 @@ const UserBooking = () => {
                   <p className="font-semibold">{format(new Date(selectedDate), "PPP")}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Time</p>
-                  <p className="font-semibold">
-                    {selectedTimeSlot.start} - {selectedTimeSlot.end}
-                  </p>
+                  <p className="text-sm text-muted-foreground">Selected Slots</p>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedSlots.sort((a, b) => a.start.localeCompare(b.start)).map(slot => (
+                      <Badge key={slot.start} variant="secondary" className="text-xs">
+                        {slot.start}-{slot.end}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total</p>
                   <p className="font-semibold text-primary text-xl">
-                    ₹{selectedGroundData.price_per_hour}
+                    ₹{totalAmount}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    ({selectedSlots.length} × ₹{selectedGroundData.price_per_hour})
                   </p>
                 </div>
               </div>
@@ -370,7 +401,7 @@ const UserBooking = () => {
                 onClick={handleBooking}
                 disabled={bookingLoading}
               >
-                {bookingLoading ? "Booking..." : "Confirm Booking"}
+                {bookingLoading ? "Booking..." : `Confirm ${selectedSlots.length} Booking${selectedSlots.length > 1 ? "s" : ""}`}
               </Button>
             </CardContent>
           </Card>

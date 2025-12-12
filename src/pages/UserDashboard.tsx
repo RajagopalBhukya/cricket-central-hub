@@ -44,10 +44,12 @@ const UserDashboard = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
+  const [newEmail, setNewEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editEmailOpen, setEditEmailOpen] = useState(false);
   const [editedProfile, setEditedProfile] = useState({ full_name: "", phone_number: "" });
   const navigate = useNavigate();
 
@@ -153,6 +155,33 @@ const UserDashboard = () => {
       });
       setProfile({ ...profile, ...editedProfile });
       setEditProfileOpen(false);
+    }
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!newEmail || newEmail === userEmail) {
+      toast({
+        title: "No Changes",
+        description: "Please enter a different email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update email. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Email Update Initiated",
+        description: "Please check your new email for a confirmation link.",
+      });
+      setEditEmailOpen(false);
     }
   };
 
@@ -271,7 +300,45 @@ const UserDashboard = () => {
                 <Mail className="w-5 h-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{userEmail}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{userEmail}</p>
+                    <Dialog open={editEmailOpen} onOpenChange={setEditEmailOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-6 px-2">
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Update Email Address</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label>Current Email</Label>
+                            <Input value={userEmail} disabled />
+                          </div>
+                          <div>
+                            <Label>New Email Address</Label>
+                            <Input
+                              type="email"
+                              value={newEmail}
+                              onChange={(e) => setNewEmail(e.target.value)}
+                              placeholder="Enter new email"
+                            />
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            A confirmation link will be sent to your new email address.
+                          </p>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setEditEmailOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button onClick={handleUpdateEmail}>Update Email</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
               </div>
             </div>
