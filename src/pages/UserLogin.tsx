@@ -89,9 +89,21 @@ const UserLogin = () => {
         body: { email: data.email, phone: data.phone }
       });
 
-      if (error) throw error;
+      // Handle edge function errors (including 400 responses)
+      if (error) {
+        // Try to parse error context for better message
+        const errorMessage = error.message || "Something went wrong. Please try again.";
+        toast({
+          title: "Login Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
-      if (response.error) {
+      // Handle error in response body
+      if (response?.error) {
         toast({
           title: "Login Failed",
           description: response.error,
@@ -101,7 +113,7 @@ const UserLogin = () => {
         return;
       }
 
-      if (response.success && response.session) {
+      if (response?.success && response?.session) {
         // Set the session using the tokens from the edge function
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: response.session.access_token,
@@ -118,6 +130,12 @@ const UserLogin = () => {
         });
 
         navigate("/user/booking", { replace: true });
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "Unable to process login. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error("Login error:", error);
