@@ -2,3 +2,12 @@ project_id = "yscvznfkfzteakprjsqx"
 
 [functions.password-reset-otp]
 verify_jwt = false
+
+[functions.user-login]
+verify_jwt = false
+
+[functions.set-admin-role]
+verify_jwt = false
+
+[functions.send-booking-email]
+verify_jwt = false

@@ -13,9 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    const { email, phone } = await req.json();
+    const { email, phone, username } = await req.json();
 
-    console.log("User login attempt:", { email, phone });
+    console.log("User login attempt:", { email, phone, username });
 
     if (!email || !phone) {
       return new Response(
@@ -89,6 +89,14 @@ serve(async (req) => {
 
       userId = existingUser.id;
       
+      // Update username if provided
+      if (username && username.trim()) {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ full_name: username.trim() })
+          .eq('id', userId);
+      }
+      
       // Generate a new password for the session
       tempPassword = crypto.randomUUID();
       
@@ -123,13 +131,14 @@ serve(async (req) => {
 
       // Create new user
       tempPassword = crypto.randomUUID();
+      const fullName = username?.trim() || email.split('@')[0];
       
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: tempPassword,
         email_confirm: true,
         user_metadata: {
-          full_name: email.split('@')[0],
+          full_name: fullName,
           phone_number: phone,
         }
       });

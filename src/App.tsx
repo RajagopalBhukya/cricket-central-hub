@@ -9,8 +9,6 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import UserLogin from "./pages/UserLogin";
-import AdminLogin from "./pages/AdminLogin";
-import AdminSignup from "./pages/AdminSignup";
 import ForgotPassword from "./pages/ForgotPassword";
 import UserBooking from "./pages/UserBooking";
 import BookingSuccess from "./pages/BookingSuccess";
@@ -34,8 +32,6 @@ const App = () => (
             
             {/* Auth Routes */}
             <Route path="/auth" element={<UserLogin />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/signup" element={<AdminSignup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             
             {/* User Routes */}
