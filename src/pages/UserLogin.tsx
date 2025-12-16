@@ -118,20 +118,49 @@ const UserLogin = () => {
 
     setLoading(true);
     try {
-      // IMPORTANT: Admin login must NOT create users or write to public tables.
-      // We only validate credentials via the authentication system.
-      const { error } = await supabase.auth.signInWithPassword({
+      // First, try to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password,
       });
 
-      if (error) {
-        toast({
-          title: "Access Denied",
-          description: "Invalid admin credentials",
-          variant: "destructive",
+      if (signInError) {
+        // Admin user might not exist - try to set up via edge function
+        console.log("Admin sign-in failed, attempting setup...");
+        
+        const { data: setupResponse, error: setupError } = await supabase.functions.invoke('set-admin-role', {
+          body: { 
+            setupAdmin: true,
+            email: data.email, 
+            password,
+            fullName: data.username,
+            phoneNumber: data.phone,
+          }
         });
-        return;
+
+        if (setupError || setupResponse?.error) {
+          toast({
+            title: "Access Denied",
+            description: setupResponse?.error || "Invalid admin credentials",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Now try to sign in again
+        const { error: retryError } = await supabase.auth.signInWithPassword({
+          email: data.email,
+          password,
+        });
+
+        if (retryError) {
+          toast({
+            title: "Error",
+            description: "Admin setup completed but login failed. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       toast({
