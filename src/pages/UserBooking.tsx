@@ -163,13 +163,15 @@ const UserBooking = () => {
     }
   }, [selectedGround, selectedDate]);
 
-  // Price calculation: Day (7AM-6PM): ₹600, Night (6PM-11PM): ₹800
-  const getSlotPrice = (hour: number): number => {
-    if (hour >= 7 && hour < 18) {
-      return 600; // Day rate
-    } else {
-      return 800; // Night rate
-    }
+  // Check if selected ground is day or night based on ground name
+  const isDayGround = useCallback((): boolean => {
+    const ground = grounds.find(g => g.id === selectedGround);
+    return ground?.name?.toLowerCase().includes('day') ?? false;
+  }, [grounds, selectedGround]);
+
+  // Get price based on ground type
+  const getSlotPrice = (): number => {
+    return isDayGround() ? 600 : 800;
   };
 
   const generateTimeSlots = useCallback((): TimeSlot[] => {
@@ -178,18 +180,23 @@ const UserBooking = () => {
     const isToday = selectedDate && format(new Date(selectedDate), "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
     const currentHour = now.getHours();
 
-    for (let hour = 7; hour < 23; hour++) {
+    // Determine slot range based on ground type
+    const isDay = isDayGround();
+    const startHour = isDay ? 7 : 18;  // Day: 7AM, Night: 6PM
+    const endHour = isDay ? 18 : 23;   // Day: 6PM, Night: 11PM
+    const price = isDay ? 600 : 800;
+
+    for (let hour = startHour; hour < endHour; hour++) {
       const start = `${hour.toString().padStart(2, "0")}:00`;
       const end = `${(hour + 1).toString().padStart(2, "0")}:00`;
       const isBooked = bookedSlots.some(
         (slot) => slot.start_time === start || (slot.start_time < end && slot.end_time > start)
       );
       const isPast = isToday && hour <= currentHour;
-      const price = getSlotPrice(hour);
       slots.push({ start, end, available: !isBooked && !isPast, isPast, price });
     }
     return slots;
-  }, [selectedDate, bookedSlots]);
+  }, [selectedDate, bookedSlots, isDayGround]);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
@@ -290,7 +297,7 @@ const UserBooking = () => {
 
     setBookingMessage({ 
       type: 'success', 
-      text: "Booking request sent, will be confirmed soon" 
+      text: "Request sent successfully" 
     });
 
     dispatch(clearSelection());
@@ -526,8 +533,11 @@ const UserBooking = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-sm text-muted-foreground">
-                      <p>Day (7AM-6PM): <span className="font-bold text-primary">₹600/hr</span></p>
-                      <p>Night (6PM-11PM): <span className="font-bold text-primary">₹800/hr</span></p>
+                      {ground.name.toLowerCase().includes('day') ? (
+                        <p>Day Slots (7:00 AM - 6:00 PM): <span className="font-bold text-primary">₹600/hr</span></p>
+                      ) : (
+                        <p>Night Slots (6:00 PM - 11:00 PM): <span className="font-bold text-primary">₹800/hr</span></p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
