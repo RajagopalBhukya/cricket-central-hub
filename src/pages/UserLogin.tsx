@@ -17,7 +17,6 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 const ADMIN_NAME = "Admin Gamehub";
 const ADMIN_EMAIL = "rajagopalbhukya614@gmail.com";
 const ADMIN_PHONE = "9381115918";
-const ADMIN_PASSWORD = "Gamehub123$";
 
 const userLoginSchema = z.object({
   username: z.string().min(2, "Name must be at least 2 characters"),
@@ -106,10 +105,12 @@ const UserLogin = () => {
   }, [navigate]);
 
   const handleAdminLogin = async (data: UserLoginFormData) => {
-    if (data.password !== ADMIN_PASSWORD) {
+    const password = data.password?.trim();
+
+    if (!password) {
       toast({
-        title: "Access Denied",
-        description: "Invalid admin password",
+        title: "Admin Password Required",
+        description: "Please enter the admin password to continue.",
         variant: "destructive",
       });
       return;
@@ -117,60 +118,31 @@ const UserLogin = () => {
 
     setLoading(true);
     try {
-      // Try to sign in as admin first
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: ADMIN_EMAIL,
-        password: ADMIN_PASSWORD,
+      // IMPORTANT: Admin login must NOT create users or write to public tables.
+      // We only validate credentials via the authentication system.
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password,
       });
 
-      if (signInError) {
-        // Admin doesn't exist, create using edge function (bypasses normal user flow)
-        const { data: createResponse, error: createError } = await supabase.functions.invoke('set-admin-role', {
-          body: { 
-            email: ADMIN_EMAIL, 
-            password: ADMIN_PASSWORD,
-            fullName: ADMIN_NAME,
-            phoneNumber: ADMIN_PHONE,
-            createUser: true
-          }
+      if (error) {
+        toast({
+          title: "Access Denied",
+          description: "Invalid admin credentials",
+          variant: "destructive",
         });
-
-        if (createError || createResponse?.error) {
-          toast({
-            title: "Error",
-            description: createResponse?.error || createError?.message || "Failed to setup admin account",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-
-        // Now sign in after creation
-        const { error: retryError } = await supabase.auth.signInWithPassword({
-          email: ADMIN_EMAIL,
-          password: ADMIN_PASSWORD,
-        });
-
-        if (retryError) {
-          toast({
-            title: "Error",
-            description: "Admin account created but login failed. Please try again.",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
+        return;
       }
 
       toast({
         title: "Welcome Admin!",
-        description: "Redirecting to dashboard...",
+        description: "Redirecting to Admin Dashboard...",
       });
       navigate("/admin/dashboard", { replace: true });
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Something went wrong",
+        description: error?.message || "Something went wrong",
         variant: "destructive",
       });
     } finally {
