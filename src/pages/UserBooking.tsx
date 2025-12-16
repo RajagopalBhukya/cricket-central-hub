@@ -258,7 +258,7 @@ const UserBooking = () => {
         setBookingLoading(false);
         setBookingMessage({ 
           type: 'error', 
-          text: "Booking failed. Slot already booked by another user. Please try again." 
+          text: "Booking failed. Slot already booked. Please try another slot." 
         });
         fetchBookedSlots(selectedGround, new Date(selectedDate));
         return;
@@ -276,7 +276,7 @@ const UserBooking = () => {
       if (error?.code === '23505') { // Unique constraint violation
         setBookingMessage({ 
           type: 'error', 
-          text: "Booking failed. Slot already booked by another user. Please try again." 
+          text: "Booking failed. Slot already booked. Please try another slot." 
         });
       } else {
         setBookingMessage({ 
@@ -567,23 +567,40 @@ const UserBooking = () => {
                     {timeSlots.map((slot) => {
                       const isSelected = selectedSlots.some(s => s.start === slot.start);
                       const isNight = parseInt(slot.start) >= 18;
+                      const isBooked = !slot.available && !slot.isPast;
+                      
+                      const handleSlotClick = () => {
+                        if (isBooked) {
+                          setBookingMessage({
+                            type: 'error',
+                            text: 'Slot already booked. Please book another slot.'
+                          });
+                          return;
+                        }
+                        if (slot.available) {
+                          handleTimeSlotSelect(slot);
+                        }
+                      };
+                      
                       return (
                         <Button
                           key={slot.start}
                           variant={
                             isSelected
                               ? "default"
+                              : isBooked
+                              ? "destructive"
                               : slot.available
                               ? "outline"
                               : "secondary"
                           }
-                          disabled={!slot.available}
-                          onClick={() => handleTimeSlotSelect(slot)}
-                          className={`text-sm flex flex-col h-auto py-2 ${slot.isPast ? "line-through opacity-50" : ""}`}
+                          disabled={slot.isPast}
+                          onClick={handleSlotClick}
+                          className={`text-sm flex flex-col h-auto py-2 ${slot.isPast ? "line-through opacity-50" : ""} ${isBooked ? "cursor-not-allowed" : ""}`}
                         >
                           <span>{slot.start} - {slot.end}</span>
-                          <span className={`text-xs ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-                            ₹{slot.price}
+                          <span className={`text-xs ${isSelected ? 'text-primary-foreground' : isBooked ? 'text-destructive-foreground' : 'text-muted-foreground'}`}>
+                            {isBooked ? "Booked" : `₹${slot.price}`}
                           </span>
                           {slot.isPast && <span className="text-xs">(Past)</span>}
                         </Button>

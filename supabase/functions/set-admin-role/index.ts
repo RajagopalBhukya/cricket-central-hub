@@ -12,14 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "User ID is required" }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { userId, createUser, email, password, fullName, phoneNumber } = await req.json();
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -27,20 +20,87 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Update the user's role to admin
-    const { error } = await supabaseAdmin
+    let targetUserId = userId;
+
+    // If createUser flag is set, create the admin user first
+    if (createUser && email && password) {
+      console.log("Creating admin user:", email);
+      
+      // Check if user already exists
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = existingUsers?.users?.find(u => u.email === email);
+      
+      if (existingUser) {
+        targetUserId = existingUser.id;
+        console.log("Admin user already exists:", targetUserId);
+      } else {
+        // Create the admin user using admin API (bypasses trigger issues)
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName || 'Admin',
+            phone_number: phoneNumber || '',
+          }
+        });
+
+        if (createError) {
+          console.error("Error creating admin user:", createError);
+          return new Response(
+            JSON.stringify({ error: createError.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        targetUserId = newUser.user.id;
+        console.log("Admin user created:", targetUserId);
+      }
+    }
+
+    if (!targetUserId) {
+      return new Response(
+        JSON.stringify({ error: "User ID is required" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if role already exists
+    const { data: existingRole } = await supabaseAdmin
       .from('user_roles')
-      .update({ role: 'admin' })
-      .eq('user_id', userId);
+      .select('role')
+      .eq('user_id', targetUserId)
+      .maybeSingle();
 
-    if (error) {
-      // If update fails, try insert (in case the trigger didn't create the role)
-      const { error: insertError } = await supabaseAdmin
+    if (existingRole?.role === 'admin') {
+      console.log("User already has admin role:", targetUserId);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update or insert admin role
+    if (existingRole) {
+      const { error } = await supabaseAdmin
         .from('user_roles')
-        .insert({ user_id: userId, role: 'admin' });
+        .update({ role: 'admin' })
+        .eq('user_id', targetUserId);
 
-      if (insertError) {
-        console.error("Error setting admin role:", insertError);
+      if (error) {
+        console.error("Error updating admin role:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to set admin role" }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      const { error } = await supabaseAdmin
+        .from('user_roles')
+        .insert({ user_id: targetUserId, role: 'admin' });
+
+      if (error) {
+        console.error("Error inserting admin role:", error);
         return new Response(
           JSON.stringify({ error: "Failed to set admin role" }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -48,10 +108,10 @@ serve(async (req) => {
       }
     }
 
-    console.log("Admin role set for user:", userId);
+    console.log("Admin role set for user:", targetUserId);
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, userId: targetUserId }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

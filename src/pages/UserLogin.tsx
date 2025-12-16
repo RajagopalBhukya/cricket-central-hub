@@ -115,54 +115,67 @@ const UserLogin = () => {
       return;
     }
 
-    // Try to sign in as admin
-    const { error } = await supabase.auth.signInWithPassword({
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-    });
-
-    if (error) {
-      // Admin doesn't exist, create them
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    setLoading(true);
+    try {
+      // Try to sign in as admin first
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: ADMIN_EMAIL,
         password: ADMIN_PASSWORD,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            full_name: ADMIN_NAME,
-            phone_number: ADMIN_PHONE,
-          },
-        },
       });
 
-      if (signUpError) {
-        toast({
-          title: "Error",
-          description: signUpError.message,
-          variant: "destructive",
+      if (signInError) {
+        // Admin doesn't exist, create using edge function (bypasses normal user flow)
+        const { data: createResponse, error: createError } = await supabase.functions.invoke('set-admin-role', {
+          body: { 
+            email: ADMIN_EMAIL, 
+            password: ADMIN_PASSWORD,
+            fullName: ADMIN_NAME,
+            phoneNumber: ADMIN_PHONE,
+            createUser: true
+          }
         });
-        return;
-      }
 
-      // Set admin role using edge function
-      if (signUpData.user) {
-        await supabase.functions.invoke('set-admin-role', {
-          body: { userId: signUpData.user.id }
-        });
-        
-        // Sign in after signup
-        await supabase.auth.signInWithPassword({
+        if (createError || createResponse?.error) {
+          toast({
+            title: "Error",
+            description: createResponse?.error || createError?.message || "Failed to setup admin account",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Now sign in after creation
+        const { error: retryError } = await supabase.auth.signInWithPassword({
           email: ADMIN_EMAIL,
           password: ADMIN_PASSWORD,
         });
-      }
-    }
 
-    toast({
-      title: "Welcome Admin!",
-      description: "Redirecting to dashboard...",
-    });
-    navigate("/admin/dashboard", { replace: true });
+        if (retryError) {
+          toast({
+            title: "Error",
+            description: "Admin account created but login failed. Please try again.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      toast({
+        title: "Welcome Admin!",
+        description: "Redirecting to dashboard...",
+      });
+      navigate("/admin/dashboard", { replace: true });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogin = async (data: UserLoginFormData) => {
