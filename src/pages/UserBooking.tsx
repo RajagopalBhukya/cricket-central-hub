@@ -163,6 +163,39 @@ const UserBooking = () => {
     }
   }, [selectedGround, selectedDate]);
 
+  // Real-time subscription for booking updates
+  useEffect(() => {
+    if (!selectedGround || !selectedDate) return;
+
+    const formattedDate = format(new Date(selectedDate), "yyyy-MM-dd");
+    
+    const channel = supabase
+      .channel('booking-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `ground_id=eq.${selectedGround}`
+        },
+        (payload) => {
+          console.log('Realtime booking update:', payload);
+          // Refetch booked slots when any booking changes
+          fetchBookedSlots(selectedGround, new Date(selectedDate));
+          // Also refresh user's bookings
+          if (user) {
+            fetchUserBookings(user.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedGround, selectedDate, user]);
+
   // Check if selected ground is day or night based on ground name
   const isDayGround = useCallback((): boolean => {
     const ground = grounds.find(g => g.id === selectedGround);
