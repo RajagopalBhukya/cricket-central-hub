@@ -141,17 +141,12 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-2">
-                <Link to="/auth">
-                  <Button variant="default" size="sm">Login</Button>
-                </Link>
-                <Link to="/admin/login">
-                  <Button variant="outline" size="sm">
-                    <Shield className="h-4 w-4 mr-1" />
-                    Admin
-                  </Button>
-                </Link>
-              </div>
+              <Link to="/auth">
+                <Button variant="default" size="sm">
+                  <UserIcon className="h-4 w-4 mr-1" />
+                  Login
+                </Button>
+              </Link>
             )}
           </div>
         </div>
@@ -208,22 +203,13 @@ const Navbar = () => {
                   )}
                 </>
               ) : (
-                <>
-                  <Link
-                    to="/auth"
-                    className="px-4 py-2 text-primary font-medium hover:bg-muted rounded-md"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/admin/login"
-                    className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Admin Login
-                  </Link>
-                </>
+                <Link
+                  to="/auth"
+                  className="px-4 py-2 text-primary font-medium hover:bg-muted rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Login to Book
+                </Link>
               )}
             </div>
           </div>

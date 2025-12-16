@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setSelectedDate, setSelectedGround, setSelectedTimeSlot, clearSelection } from "@/store/slices/bookingSlice";
+import { setSelectedDate, setSelectedGround, clearSelection } from "@/store/slices/bookingSlice";
 import Navbar from "@/components/Navbar";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
-import { MapPin, Clock, User, Calendar as CalendarIcon, LogOut } from "lucide-react";
+import { MapPin, Clock, User, Calendar as CalendarIcon, LogOut, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface Ground {
   id: string;
@@ -26,11 +33,22 @@ interface TimeSlot {
   end: string;
   available: boolean;
   isPast: boolean;
+  price: number;
 }
 
 interface UserProfile {
   full_name: string;
   phone_number: string;
+}
+
+interface UserBooking {
+  id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  total_amount: number;
+  ground_name?: string;
 }
 
 const UserBooking = () => {
@@ -41,6 +59,14 @@ const UserBooking = () => {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<TimeSlot[]>([]);
+  const [bookingMessage, setBookingMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [userBookings, setUserBookings] = useState<UserBooking[]>([]);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<UserBooking | null>(null);
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [bookingToReschedule, setBookingToReschedule] = useState<UserBooking | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
+  const [rescheduleSlot, setRescheduleSlot] = useState<TimeSlot | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -59,7 +85,6 @@ const UserBooking = () => {
     }
     setUser(session.user);
     
-    // Fetch user profile
     const { data: profileData } = await supabase
       .from("profiles")
       .select("full_name, phone_number")
@@ -71,6 +96,7 @@ const UserBooking = () => {
     }
     
     fetchGrounds();
+    fetchUserBookings(session.user.id);
   };
 
   const fetchGrounds = async () => {
@@ -89,6 +115,32 @@ const UserBooking = () => {
       setGrounds(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchUserBookings = async (userId: string) => {
+    const { data: bookingsData } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("user_id", userId)
+      .in("status", ["active"])
+      .order("booking_date", { ascending: true });
+
+    if (bookingsData) {
+      const groundIds = [...new Set(bookingsData.map(b => b.ground_id))];
+      const { data: groundsData } = await supabase
+        .from("grounds")
+        .select("id, name")
+        .in("id", groundIds);
+
+      const groundsMap = new Map(groundsData?.map(g => [g.id, g]) || []);
+
+      const enrichedBookings: UserBooking[] = bookingsData.map(booking => ({
+        ...booking,
+        ground_name: groundsMap.get(booking.ground_id)?.name || "N/A",
+      }));
+
+      setUserBookings(enrichedBookings);
+    }
   };
 
   const fetchBookedSlots = async (groundId: string, date: Date) => {
@@ -111,41 +163,52 @@ const UserBooking = () => {
     }
   }, [selectedGround, selectedDate]);
 
-  const generateTimeSlots = (): TimeSlot[] => {
+  // Price calculation: Day (7AM-6PM): ₹600, Night (6PM-11PM): ₹800
+  const getSlotPrice = (hour: number): number => {
+    if (hour >= 7 && hour < 18) {
+      return 600; // Day rate
+    } else {
+      return 800; // Night rate
+    }
+  };
+
+  const generateTimeSlots = useCallback((): TimeSlot[] => {
     const slots: TimeSlot[] = [];
     const now = new Date();
     const isToday = selectedDate && format(new Date(selectedDate), "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
     const currentHour = now.getHours();
 
-    for (let hour = 6; hour < 23; hour++) {
+    for (let hour = 7; hour < 23; hour++) {
       const start = `${hour.toString().padStart(2, "0")}:00`;
       const end = `${(hour + 1).toString().padStart(2, "0")}:00`;
       const isBooked = bookedSlots.some(
         (slot) => slot.start_time === start || (slot.start_time < end && slot.end_time > start)
       );
-      // Mark slot as past if it's today and the hour has passed
       const isPast = isToday && hour <= currentHour;
-      slots.push({ start, end, available: !isBooked && !isPast, isPast });
+      const price = getSlotPrice(hour);
+      slots.push({ start, end, available: !isBooked && !isPast, isPast, price });
     }
     return slots;
-  };
+  }, [selectedDate, bookedSlots]);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       dispatch(setSelectedDate(date.toISOString()));
       setSelectedSlots([]);
+      setBookingMessage(null);
     }
   };
 
   const handleGroundSelect = (groundId: string) => {
     dispatch(setSelectedGround(groundId));
     setSelectedSlots([]);
+    setBookingMessage(null);
   };
 
   const handleTimeSlotSelect = (slot: TimeSlot) => {
     if (!slot.available) return;
+    setBookingMessage(null);
     
-    // Check if already selected
     const isAlreadySelected = selectedSlots.some(s => s.start === slot.start);
     
     if (isAlreadySelected) {
@@ -157,20 +220,18 @@ const UserBooking = () => {
 
   const handleBooking = async () => {
     if (!selectedGround || !selectedDate || selectedSlots.length === 0 || !user) {
-      toast({
-        title: "Missing Information",
-        description: "Please select a ground, date, and at least one time slot.",
-        variant: "destructive",
-      });
+      setBookingMessage({ type: 'error', text: "Please select a ground, date, and at least one time slot." });
       return;
     }
 
+    // Clear any previous messages
+    setBookingMessage(null);
     setBookingLoading(true);
 
     const formattedDate = format(new Date(selectedDate), "yyyy-MM-dd");
-    const selectedGroundData = grounds.find((g) => g.id === selectedGround);
+    const requestTimestamp = Date.now(); // Millisecond precision timestamp
     
-    // Create bookings for all selected slots
+    // Create bookings for all selected slots with timestamp
     const bookings = selectedSlots.map(slot => ({
       ground_id: selectedGround,
       user_id: user.id,
@@ -178,10 +239,31 @@ const UserBooking = () => {
       start_time: slot.start,
       end_time: slot.end,
       hours: 1,
-      total_amount: selectedGroundData ? selectedGroundData.price_per_hour : 0,
+      total_amount: slot.price,
       status: "active" as const,
       payment_status: "unpaid" as const,
+      created_at: new Date(requestTimestamp).toISOString(),
     }));
+
+    // Check for conflicts before inserting
+    for (const booking of bookings) {
+      const { data: conflict } = await supabase.rpc('check_booking_conflict', {
+        _ground_id: booking.ground_id,
+        _booking_date: booking.booking_date,
+        _start_time: booking.start_time,
+        _end_time: booking.end_time,
+      });
+
+      if (conflict) {
+        setBookingLoading(false);
+        setBookingMessage({ 
+          type: 'error', 
+          text: "Booking failed. Slot already booked by another user. Please try again." 
+        });
+        fetchBookedSlots(selectedGround, new Date(selectedDate));
+        return;
+      }
+    }
 
     const { data: insertedBookings, error } = await supabase
       .from("bookings")
@@ -191,22 +273,118 @@ const UserBooking = () => {
     setBookingLoading(false);
 
     if (error || !insertedBookings || insertedBookings.length === 0) {
+      if (error?.code === '23505') { // Unique constraint violation
+        setBookingMessage({ 
+          type: 'error', 
+          text: "Booking failed. Slot already booked by another user. Please try again." 
+        });
+      } else {
+        setBookingMessage({ 
+          type: 'error', 
+          text: error?.message || "Failed to create booking(s)" 
+        });
+      }
+      fetchBookedSlots(selectedGround, new Date(selectedDate));
+      return;
+    }
+
+    setBookingMessage({ 
+      type: 'success', 
+      text: "Booking request sent, will be confirmed soon" 
+    });
+
+    dispatch(clearSelection());
+    setSelectedSlots([]);
+    
+    if (user) {
+      fetchUserBookings(user.id);
+    }
+    
+    // Navigate to success page after a short delay
+    setTimeout(() => {
+      navigate(`/booking-success?id=${insertedBookings[0].id}&count=${insertedBookings.length}`);
+    }, 1500);
+  };
+
+  const handleCancelBooking = async () => {
+    if (!bookingToCancel) return;
+
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("id", bookingToCancel.id);
+
+    if (error) {
       toast({
-        title: "Booking Failed",
-        description: error?.message || "Failed to create booking(s)",
+        title: "Error",
+        description: "Failed to cancel booking",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Booking Cancelled",
+        description: "Your booking has been cancelled successfully.",
+      });
+      if (user) {
+        fetchUserBookings(user.id);
+      }
+    }
+    setCancelDialogOpen(false);
+    setBookingToCancel(null);
+  };
+
+  const handleRescheduleBooking = async () => {
+    if (!bookingToReschedule || !rescheduleDate || !rescheduleSlot) return;
+
+    const formattedDate = format(rescheduleDate, "yyyy-MM-dd");
+
+    // Check for conflicts
+    const { data: conflict } = await supabase.rpc('check_booking_conflict', {
+      _ground_id: bookingToReschedule.id,
+      _booking_date: formattedDate,
+      _start_time: rescheduleSlot.start,
+      _end_time: rescheduleSlot.end,
+      _exclude_booking_id: bookingToReschedule.id,
+    });
+
+    if (conflict) {
+      toast({
+        title: "Reschedule Failed",
+        description: "The selected slot is already booked. Please choose another time.",
         variant: "destructive",
       });
       return;
     }
 
-    toast({
-      title: "Booking Successful!",
-      description: `${selectedSlots.length} slot(s) have been booked successfully.`,
-    });
+    const { error } = await supabase
+      .from("bookings")
+      .update({
+        booking_date: formattedDate,
+        start_time: rescheduleSlot.start,
+        end_time: rescheduleSlot.end,
+        total_amount: rescheduleSlot.price,
+      })
+      .eq("id", bookingToReschedule.id);
 
-    dispatch(clearSelection());
-    setSelectedSlots([]);
-    navigate(`/booking-success?id=${insertedBookings[0].id}&count=${insertedBookings.length}`);
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reschedule booking",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Booking Rescheduled",
+        description: "Your booking has been rescheduled successfully.",
+      });
+      if (user) {
+        fetchUserBookings(user.id);
+      }
+    }
+    setRescheduleDialogOpen(false);
+    setBookingToReschedule(null);
+    setRescheduleDate(undefined);
+    setRescheduleSlot(null);
   };
 
   const handleLogout = async () => {
@@ -214,9 +392,8 @@ const UserBooking = () => {
     navigate("/auth");
   };
 
-  const selectedGroundData = grounds.find((g) => g.id === selectedGround);
   const timeSlots = generateTimeSlots();
-  const totalAmount = selectedGroundData ? selectedGroundData.price_per_hour * selectedSlots.length : 0;
+  const totalAmount = selectedSlots.reduce((sum, slot) => sum + slot.price, 0);
 
   if (loading) {
     return (
@@ -237,7 +414,7 @@ const UserBooking = () => {
         {/* User Profile Header */}
         <Card className="mb-8">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <User className="w-6 h-6 text-primary" />
@@ -263,7 +440,66 @@ const UserBooking = () => {
           </CardContent>
         </Card>
 
+        {/* Active Bookings */}
+        {userBookings.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Your Active Bookings</CardTitle>
+              <CardDescription>You can cancel or reschedule your bookings below</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {userBookings.map((booking) => (
+                  <div key={booking.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                    <div>
+                      <p className="font-medium">{booking.ground_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(booking.booking_date), "PPP")} | {booking.start_time} - {booking.end_time}
+                      </p>
+                      <p className="text-sm font-medium text-primary">₹{booking.total_amount}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setBookingToReschedule(booking);
+                          setRescheduleDialogOpen(true);
+                        }}
+                      >
+                        Reschedule
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          setBookingToCancel(booking);
+                          setCancelDialogOpen(true);
+                        }}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <h1 className="text-4xl font-bold text-center mb-8 text-primary">Book a Slot</h1>
+
+        {/* Booking Message */}
+        {bookingMessage && (
+          <div className={`mb-6 p-4 rounded-lg text-center ${
+            bookingMessage.type === 'success' 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-destructive/10 text-destructive border border-destructive/20'
+          }`}>
+            {bookingMessage.text}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Ground Selection */}
@@ -285,7 +521,10 @@ const UserBooking = () => {
                     <CardDescription>{ground.location}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold text-primary">₹{ground.price_per_hour}/hr</p>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Day (7AM-6PM): <span className="font-bold text-primary">₹600/hr</span></p>
+                      <p>Night (6PM-11PM): <span className="font-bold text-primary">₹800/hr</span></p>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -327,6 +566,7 @@ const UserBooking = () => {
                   <div className="grid grid-cols-2 gap-2">
                     {timeSlots.map((slot) => {
                       const isSelected = selectedSlots.some(s => s.start === slot.start);
+                      const isNight = parseInt(slot.start) >= 18;
                       return (
                         <Button
                           key={slot.start}
@@ -339,10 +579,13 @@ const UserBooking = () => {
                           }
                           disabled={!slot.available}
                           onClick={() => handleTimeSlotSelect(slot)}
-                          className={`text-sm ${slot.isPast ? "line-through opacity-50" : ""}`}
+                          className={`text-sm flex flex-col h-auto py-2 ${slot.isPast ? "line-through opacity-50" : ""}`}
                         >
-                          {slot.start} - {slot.end}
-                          {slot.isPast && " (Past)"}
+                          <span>{slot.start} - {slot.end}</span>
+                          <span className={`text-xs ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+                            ₹{slot.price}
+                          </span>
+                          {slot.isPast && <span className="text-xs">(Past)</span>}
                         </Button>
                       );
                     })}
@@ -360,7 +603,7 @@ const UserBooking = () => {
         </div>
 
         {/* Booking Summary */}
-        {selectedGroundData && selectedDate && selectedSlots.length > 0 && (
+        {selectedGround && selectedDate && selectedSlots.length > 0 && (
           <Card className="mt-8">
             <CardHeader>
               <CardTitle>Booking Summary ({selectedSlots.length} slot{selectedSlots.length > 1 ? "s" : ""})</CardTitle>
@@ -369,7 +612,7 @@ const UserBooking = () => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div>
                   <p className="text-sm text-muted-foreground">Ground</p>
-                  <p className="font-semibold">{selectedGroundData.name}</p>
+                  <p className="font-semibold">{grounds.find(g => g.id === selectedGround)?.name}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Date</p>
@@ -380,19 +623,14 @@ const UserBooking = () => {
                   <div className="flex flex-wrap gap-1">
                     {selectedSlots.sort((a, b) => a.start.localeCompare(b.start)).map(slot => (
                       <Badge key={slot.start} variant="secondary" className="text-xs">
-                        {slot.start}-{slot.end}
+                        {slot.start}-{slot.end} (₹{slot.price})
                       </Badge>
                     ))}
                   </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="font-semibold text-primary text-xl">
-                    ₹{totalAmount}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    ({selectedSlots.length} × ₹{selectedGroundData.price_per_hour})
-                  </p>
+                  <p className="font-semibold text-primary text-xl">₹{totalAmount}</p>
                 </div>
               </div>
               <Button
@@ -407,6 +645,82 @@ const UserBooking = () => {
           </Card>
         )}
       </div>
+
+      {/* Cancel Booking Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Booking</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to cancel this booking?</p>
+          {bookingToCancel && (
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="font-medium">{bookingToCancel.ground_name}</p>
+              <p className="text-sm text-muted-foreground">
+                {format(new Date(bookingToCancel.booking_date), "PPP")} | {bookingToCancel.start_time} - {bookingToCancel.end_time}
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              Keep Booking
+            </Button>
+            <Button variant="destructive" onClick={handleCancelBooking}>
+              Cancel Booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Booking Dialog */}
+      <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Reschedule Booking</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium mb-2">Select New Date</p>
+              <Calendar
+                mode="single"
+                selected={rescheduleDate}
+                onSelect={setRescheduleDate}
+                disabled={(date) =>
+                  isBefore(startOfDay(date), startOfDay(new Date())) ||
+                  isBefore(addDays(new Date(), 30), date)
+                }
+                className="rounded-md border"
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">Select New Time</p>
+              <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+                {timeSlots.filter(s => s.available).map((slot) => (
+                  <Button
+                    key={slot.start}
+                    variant={rescheduleSlot?.start === slot.start ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setRescheduleSlot(slot)}
+                  >
+                    {slot.start}-{slot.end}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRescheduleDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRescheduleBooking}
+              disabled={!rescheduleDate || !rescheduleSlot}
+            >
+              Confirm Reschedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <footer className="bg-card border-t border-border py-8 mt-20">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
