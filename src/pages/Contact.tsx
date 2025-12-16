@@ -104,9 +104,9 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Address</h3>
-                    <p className="text-muted-foreground">Stumps Drive In ,Beside Duvvada Bridge
-Rajeeve Nagar road, City 560001
-Visakhapattnam, India<br />
+                    <p className="text-muted-foreground">Stumps Drive In ,Beside Duvvada Bridge Rajeeve Nagar road, City 560001 Visakhapattnam, India
+
+                    <br />
                       Sports Complex, City 560001<br />
                       Karnataka, India
                     </p>
@@ -140,8 +140,8 @@ Visakhapattnam, India<br />
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Email</h3>
-                    <p className="text-muted-foreground">
-                      info@boxcricket.com<br />
+                    <p className="text-muted-foreground">info@boxcricket.com
+gamegubsys1@gmail.com<br />
                       support@boxcricket.com
                     </p>
                   </div>
@@ -157,8 +157,8 @@ Visakhapattnam, India<br />
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Business Hours</h3>
-                    <p className="text-muted-foreground">
-                      Monday - Friday: 6 AM - 11 PM<br />
+                    <p className="text-muted-foreground">Monday - Friday: 6 AM - 11 PM
+Saturday - Sunday:  6 AM -  11PM<br />
                       Saturday - Sunday: Open 24 Hours
                     </p>
                   </div>
@@ -175,16 +175,9 @@ Visakhapattnam, India<br />
           <h2 className="text-4xl font-bold text-center mb-12 text-foreground">Find Us</h2>
           <div className="max-w-5xl mx-auto">
             <Card className="overflow-hidden bg-card/80 backdrop-blur-sm">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d950.6!2d83.1578934!3d17.7006083!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a396f8a3b96c05d%3A0x353d26024494d2e6!2sShake%20Aadistha!5e0!3m2!1sen!2sin!4v1701782400000!5m2!1sen!2sin"
-                width="100%"
-                height="384"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="rounded-lg"
-              />
+              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d950.6!2d83.1578934!3d17.7006083!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a396f8a3b96c05d%3A0x353d26024494d2e6!2sShake%20Aadistha!5e0!3m2!1sen!2sin!4v1701782400000!5m2!1sen!2sin" width="100%" height="384" style={{
+              border: 0
+            }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="rounded-lg" />
             </Card>
           </div>
         </div>
