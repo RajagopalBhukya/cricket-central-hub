@@ -91,55 +91,58 @@ const Navbar = () => {
             </Button>
 
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar>
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        <UserIcon className="h-5 w-5" />
-                      </AvatarFallback>
-                    </Avatar>
+              isAdmin ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={isOnAdminPage ? "ghost" : "secondary"}
+                    size="icon"
+                    aria-label="User Dashboard"
+                    onClick={() => navigate("/dashboard")}
+                  >
+                    <UserIcon className="h-5 w-5" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem disabled className="flex flex-col items-start">
-                    <span className="text-sm font-medium">{user.email}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {isAdmin ? "Admin" : "User"}
-                    </span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/user/booking")}>
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Book a Slot
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    My Bookings
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <>
-                      <DropdownMenuSeparator />
-                      {isOnAdminPage ? (
-                        <DropdownMenuItem onClick={() => navigate("/user/booking")}>
-                          <UserIcon className="mr-2 h-4 w-4" />
-                          Switch to User View
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-                          <LayoutDashboard className="mr-2 h-4 w-4" />
-                          Admin Dashboard
-                        </DropdownMenuItem>
-                      )}
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <Button
+                    variant={isOnAdminPage ? "secondary" : "ghost"}
+                    size="icon"
+                    aria-label="Admin Dashboard"
+                    onClick={() => navigate("/admin/dashboard")}
+                  >
+                    <LayoutDashboard className="h-5 w-5" />
+                  </Button>
+                </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <Avatar>
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          <UserIcon className="h-5 w-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem disabled className="flex flex-col items-start">
+                      <span className="text-sm font-medium">{user.email}</span>
+                      <span className="text-xs text-muted-foreground">User</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate("/user/booking")}> 
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Book a Slot
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/dashboard")}> 
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      My Bookings
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )
             ) : (
               <Link to="/auth">
                 <Button variant="default" size="sm">

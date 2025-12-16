@@ -492,11 +492,15 @@ const UserBooking = () => {
 
         {/* Booking Message */}
         {bookingMessage && (
-          <div className={`mb-6 p-4 rounded-lg text-center ${
-            bookingMessage.type === 'success' 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-destructive/10 text-destructive border border-destructive/20'
-          }`}>
+          <div
+            className={`mb-6 p-4 rounded-lg text-center border ${
+              bookingMessage.type === "success"
+                ? "bg-primary/10 text-foreground border-primary/20"
+                : "bg-destructive/10 text-destructive border-destructive/20"
+            }`}
+            role="status"
+            aria-live="polite"
+          >
             {bookingMessage.text}
           </div>
         )}

@@ -22,40 +22,15 @@ serve(async (req) => {
 
     let targetUserId = userId;
 
-    // If createUser flag is set, create the admin user first
-    if (createUser && email && password) {
-      console.log("Creating admin user:", email);
-      
-      // Check if user already exists
-      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-      const existingUser = existingUsers?.users?.find(u => u.email === email);
-      
-      if (existingUser) {
-        targetUserId = existingUser.id;
-        console.log("Admin user already exists:", targetUserId);
-      } else {
-        // Create the admin user using admin API (bypasses trigger issues)
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            full_name: fullName || 'Admin',
-            phone_number: phoneNumber || '',
-          }
-        });
-
-        if (createError) {
-          console.error("Error creating admin user:", createError);
-          return new Response(
-            JSON.stringify({ error: createError.message }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        targetUserId = newUser.user.id;
-        console.log("Admin user created:", targetUserId);
-      }
+    // IMPORTANT: Admin login must NEVER create new users.
+    // This function is only for role assignment to an already-existing user.
+    if (createUser) {
+      return new Response(
+        JSON.stringify({
+          error: "Admin provisioning is disabled from the login flow. Create the admin account separately, then sign in normally."
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (!targetUserId) {
