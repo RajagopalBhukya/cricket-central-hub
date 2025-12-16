@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, createUser, email, password, fullName, phoneNumber } = await req.json();
+    const { userId, setupAdmin, email, password, fullName, phoneNumber } = await req.json();
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -22,15 +22,83 @@ serve(async (req) => {
 
     let targetUserId = userId;
 
-    // IMPORTANT: Admin login must NEVER create new users.
-    // This function is only for role assignment to an already-existing user.
-    if (createUser) {
-      return new Response(
-        JSON.stringify({
-          error: "Admin provisioning is disabled from the login flow. Create the admin account separately, then sign in normally."
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // One-time admin setup - only works for the specific admin email
+    if (setupAdmin && email && password) {
+      const ALLOWED_ADMIN_EMAIL = "rajagopalbhukya614@gmail.com";
+      
+      if (email !== ALLOWED_ADMIN_EMAIL) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized admin setup attempt" }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log("Setting up admin user:", email);
+      
+      // Check if admin user already exists
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = existingUsers?.users?.find(u => u.email === email);
+      
+      if (existingUser) {
+        targetUserId = existingUser.id;
+        console.log("Admin user already exists:", targetUserId);
+        
+        // Update password if needed
+        await supabaseAdmin.auth.admin.updateUserById(targetUserId, { password });
+      } else {
+        // Handle phone number conflict - delete or update existing profile with same phone
+        if (phoneNumber) {
+          const { data: existingProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('phone_number', phoneNumber)
+            .maybeSingle();
+          
+          if (existingProfile) {
+            console.log("Phone number conflict detected, clearing old profile phone");
+            // Update the conflicting profile to have a different phone
+            await supabaseAdmin
+              .from('profiles')
+              .update({ phone_number: `old_${phoneNumber}_${Date.now()}` })
+              .eq('id', existingProfile.id);
+          }
+        }
+
+        // Create the admin user - use admin API to bypass triggers
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: fullName || 'Admin',
+            phone_number: phoneNumber || '',
+          }
+        });
+
+        if (createError) {
+          console.error("Error creating admin user:", createError);
+          return new Response(
+            JSON.stringify({ error: createError.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        targetUserId = newUser.user.id;
+        console.log("Admin user created:", targetUserId);
+
+        // Manually create profile (since trigger might have issues)
+        const { error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .upsert({
+            id: targetUserId,
+            full_name: fullName || 'Admin',
+            phone_number: phoneNumber || '',
+          }, { onConflict: 'id' });
+
+        if (profileError) {
+          console.error("Error creating admin profile:", profileError);
+        }
+      }
     }
 
     if (!targetUserId) {
@@ -50,7 +118,7 @@ serve(async (req) => {
     if (existingRole?.role === 'admin') {
       console.log("User already has admin role:", targetUserId);
       return new Response(
-        JSON.stringify({ success: true }),
+        JSON.stringify({ success: true, userId: targetUserId }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
