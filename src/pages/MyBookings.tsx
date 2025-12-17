@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { useBookingNotifications } from "@/hooks/useBookingNotifications";
+import BookingConfirmationDialog from "@/components/BookingConfirmationDialog";
 import Navbar from "@/components/Navbar";
 import { format } from "date-fns";
 import { Calendar, Clock, MapPin } from "lucide-react";
@@ -15,16 +17,32 @@ interface Booking {
   status: string;
   payment_status: string;
   total_amount: number;
-  grounds: {
-    name: string;
-    location: string;
-  };
+  ground_id: string;
+  ground_name?: string;
+  ground_location?: string;
 }
 
 const MyBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Real-time booking notifications
+  useBookingNotifications({
+    userId,
+    onBookingConfirmed: () => {
+      setConfirmationDialogOpen(true);
+      if (userId) fetchBookings(userId);
+    },
+    onBookingRejected: () => {
+      if (userId) fetchBookings(userId);
+    },
+    onBookingUpdated: () => {
+      if (userId) fetchBookings(userId);
+    },
+  });
 
   useEffect(() => {
     checkUserAndFetchBookings();
@@ -37,40 +55,72 @@ const MyBookings = () => {
       return;
     }
 
-    const { data, error } = await supabase
+    setUserId(session.user.id);
+    await fetchBookings(session.user.id);
+  };
+
+  const fetchBookings = async (uid: string) => {
+    // Fetch bookings
+    const { data: bookingsData, error } = await supabase
       .from("bookings")
-      .select(`
-        id,
-        booking_date,
-        start_time,
-        end_time,
-        status,
-        payment_status,
-        total_amount,
-        grounds (
-          name,
-          location
-        )
-      `)
-      .eq("user_id", session.user.id)
+      .select("*")
+      .eq("user_id", uid)
       .order("booking_date", { ascending: false });
 
-    if (!error && data) {
-      setBookings(data as any);
+    if (error || !bookingsData) {
+      setLoading(false);
+      return;
     }
+
+    // Fetch ground details
+    const groundIds = [...new Set(bookingsData.map(b => b.ground_id))];
+    const { data: groundsData } = await supabase
+      .from("grounds")
+      .select("id, name, location")
+      .in("id", groundIds);
+
+    const groundsMap = new Map(groundsData?.map(g => [g.id, g]) || []);
+
+    const enrichedBookings: Booking[] = bookingsData.map(booking => ({
+      ...booking,
+      ground_name: groundsMap.get(booking.ground_id)?.name || "N/A",
+      ground_location: groundsMap.get(booking.ground_id)?.location || "",
+    }));
+
+    setBookings(enrichedBookings);
     setLoading(false);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "pending":
+        return "bg-red-500";
+      case "confirmed":
       case "active":
         return "bg-green-500";
       case "completed":
         return "bg-blue-500";
       case "cancelled":
-        return "bg-red-500";
+        return "bg-gray-500";
       default:
         return "bg-gray-500";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "Pending Approval";
+      case "confirmed":
+        return "Confirmed";
+      case "active":
+        return "Active";
+      case "completed":
+        return "Completed";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return status;
     }
   };
 
@@ -95,16 +145,16 @@ const MyBookings = () => {
               <Card key={booking.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <span className="text-lg">{booking.grounds.name}</span>
+                    <span className="text-lg">{booking.ground_name}</span>
                     <Badge className={getStatusColor(booking.status)}>
-                      {booking.status}
+                      {getStatusLabel(booking.status)}
                     </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-center text-sm text-muted-foreground">
                     <MapPin className="w-4 h-4 mr-2" />
-                    {booking.grounds.location}
+                    {booking.ground_location}
                   </div>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4 mr-2" />
@@ -134,6 +184,12 @@ const MyBookings = () => {
           </div>
         )}
       </div>
+
+      {/* Booking Confirmation Dialog */}
+      <BookingConfirmationDialog
+        open={confirmationDialogOpen}
+        onClose={() => setConfirmationDialogOpen(false)}
+      />
 
       <footer className="bg-card border-t border-border py-8 mt-20">
         <div className="container mx-auto px-4 text-center text-muted-foreground">

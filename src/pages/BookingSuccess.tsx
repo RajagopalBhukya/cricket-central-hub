@@ -57,7 +57,8 @@ const BookingSuccess = () => {
       return;
     }
 
-    const { data, error } = await supabase
+    // First fetch booking with ground info
+    const { data: bookingData, error: bookingError } = await supabase
       .from("bookings")
       .select(`
         id,
@@ -67,30 +68,39 @@ const BookingSuccess = () => {
         status,
         payment_status,
         total_amount,
+        user_id,
         grounds (
           name,
           location
-        ),
-        profiles:user_id (
-          full_name,
-          phone_number
         )
       `)
       .eq("id", bookingId)
       .eq("user_id", session.user.id)
       .single();
 
-    if (error || !data) {
+    if (bookingError || !bookingData) {
       toast({
         title: "Error",
         description: "Booking not found",
         variant: "destructive",
       });
-      navigate("/");
+      navigate("/user/booking");
       return;
     }
 
-    setBooking(data as any);
+    // Fetch profile separately
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("full_name, phone_number")
+      .eq("id", session.user.id)
+      .single();
+
+    const enrichedBooking = {
+      ...bookingData,
+      profiles: profileData || { full_name: "N/A", phone_number: "" },
+    };
+
+    setBooking(enrichedBooking as any);
     setLoading(false);
   };
 
