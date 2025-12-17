@@ -46,13 +46,14 @@ interface Booking {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: "active" | "cancelled" | "completed" | "expired";
+  status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired";
   payment_status: "paid" | "unpaid";
   total_amount: number;
   user_id: string;
   user_name?: string;
   user_phone?: string;
   ground_name?: string;
+  booked_by?: string;
 }
 
 interface Ground {
@@ -169,7 +170,7 @@ const Admin = () => {
     if (data) setGrounds(data);
   };
 
-  const updateBookingStatus = async (bookingId: string, status: "active" | "cancelled" | "completed" | "expired") => {
+  const updateBookingStatus = async (bookingId: string, status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired") => {
     const { error } = await supabase
       .from("bookings")
       .update({ status })
@@ -270,9 +271,11 @@ const Admin = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "pending": return "bg-red-500";
+      case "confirmed": return "bg-green-500";
       case "active": return "bg-green-500";
       case "completed": return "bg-blue-500";
-      case "cancelled": return "bg-red-500";
+      case "cancelled": return "bg-gray-500";
       default: return "bg-gray-500";
     }
   };
@@ -391,12 +394,14 @@ const Admin = () => {
                           <TableCell>
                             <Select
                               value={booking.status}
-                              onValueChange={(value) => updateBookingStatus(booking.id, value as "active" | "cancelled" | "completed" | "expired")}
+                              onValueChange={(value) => updateBookingStatus(booking.id, value as "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired")}
                             >
                               <SelectTrigger className="w-28">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="confirmed">Confirmed</SelectItem>
                                 <SelectItem value="active">Active</SelectItem>
                                 <SelectItem value="completed">Completed</SelectItem>
                                 <SelectItem value="cancelled">Cancelled</SelectItem>

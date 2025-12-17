@@ -34,6 +34,7 @@ interface TimeSlot {
   available: boolean;
   isPast: boolean;
   price: number;
+  status?: string;
 }
 
 interface UserProfile {
@@ -53,7 +54,7 @@ interface UserBooking {
 
 const UserBooking = () => {
   const [grounds, setGrounds] = useState<Ground[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<{ start_time: string; end_time: string }[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<{ start_time: string; end_time: string; status?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -147,10 +148,10 @@ const UserBooking = () => {
     const formattedDate = format(date, "yyyy-MM-dd");
     const { data, error } = await supabase
       .from("bookings")
-      .select("start_time, end_time")
+      .select("start_time, end_time, status")
       .eq("ground_id", groundId)
       .eq("booking_date", formattedDate)
-      .in("status", ["active", "completed"]);
+      .in("status", ["pending", "confirmed", "active", "completed"]);
 
     if (!error && data) {
       setBookedSlots(data);
@@ -196,6 +197,43 @@ const UserBooking = () => {
     };
   }, [selectedGround, selectedDate, user]);
 
+  // User notification when their booking is confirmed
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('user-booking-confirmation')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'bookings',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newBooking = payload.new as any;
+          const oldBooking = payload.old as any;
+          
+          // Check if status changed from pending to confirmed
+          if (oldBooking.status === 'pending' && newBooking.status === 'confirmed') {
+            toast({
+              title: "✅ Booking Confirmed",
+              description: "Your booking has been confirmed by the admin!",
+            });
+            if (user) {
+              fetchUserBookings(user.id);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   // Check if selected ground is day or night based on ground name
   const isDayGround = useCallback((): boolean => {
     const ground = grounds.find(g => g.id === selectedGround);
@@ -222,11 +260,12 @@ const UserBooking = () => {
     for (let hour = startHour; hour < endHour; hour++) {
       const start = `${hour.toString().padStart(2, "0")}:00`;
       const end = `${(hour + 1).toString().padStart(2, "0")}:00`;
-      const isBooked = bookedSlots.some(
+      const bookedSlot = bookedSlots.find(
         (slot) => slot.start_time === start || (slot.start_time < end && slot.end_time > start)
       );
+      const isBooked = !!bookedSlot;
       const isPast = isToday && hour <= currentHour;
-      slots.push({ start, end, available: !isBooked && !isPast, isPast, price });
+      slots.push({ start, end, available: !isBooked && !isPast, isPast, price, status: bookedSlot?.status });
     }
     return slots;
   }, [selectedDate, bookedSlots, isDayGround]);
@@ -280,7 +319,7 @@ const UserBooking = () => {
       end_time: slot.end,
       hours: 1,
       total_amount: slot.price,
-      status: "active" as const,
+      status: "pending" as const,
       payment_status: "unpaid" as const,
       created_at: new Date(requestTimestamp).toISOString(),
     }));
@@ -607,9 +646,11 @@ const UserBooking = () => {
             {selectedGround && selectedDate ? (
               <Card>
                 <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Select multiple slots to book at once
-                  </p>
+                  <div className="flex gap-4 mb-3 text-sm">
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-500 rounded"></div> Pending</div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-500 rounded"></div> Confirmed</div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 border-2 border-primary rounded"></div> Available</div>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {timeSlots.map((slot) => {
                       const isSelected = selectedSlots.some(s => s.start === slot.start);
@@ -635,19 +676,21 @@ const UserBooking = () => {
                           variant={
                             isSelected
                               ? "default"
-                              : isBooked
-                              ? "destructive"
-                              : slot.available
-                              ? "outline"
-                              : "secondary"
+                              : slot.isPast
+                              ? "secondary"
+                              : "outline"
                           }
-                          disabled={slot.isPast}
+                          disabled={slot.isPast || isBooked}
                           onClick={handleSlotClick}
-                          className={`text-sm flex flex-col h-auto py-2 ${slot.isPast ? "line-through opacity-50" : ""} ${isBooked ? "cursor-not-allowed" : ""}`}
+                          className={`text-sm flex flex-col h-auto py-2 ${slot.isPast ? "line-through opacity-50" : ""} ${
+                            isBooked && slot.status === "pending" ? "!bg-red-500 !text-white cursor-not-allowed" : ""
+                          } ${
+                            isBooked && (slot.status === "confirmed" || slot.status === "active") ? "!bg-green-500 !text-white cursor-not-allowed" : ""
+                          }`}
                         >
                           <span>{slot.start} - {slot.end}</span>
-                          <span className={`text-xs ${isSelected ? 'text-primary-foreground' : isBooked ? 'text-destructive-foreground' : 'text-muted-foreground'}`}>
-                            {isBooked ? "Booked" : `₹${slot.price}`}
+                          <span className={`text-xs ${isSelected ? 'text-primary-foreground' : isBooked ? 'text-white' : 'text-muted-foreground'}`}>
+                            {isBooked ? (slot.status === "pending" ? "Pending" : "Confirmed") : `₹${slot.price}`}
                           </span>
                           {slot.isPast && <span className="text-xs">(Past)</span>}
                         </Button>
