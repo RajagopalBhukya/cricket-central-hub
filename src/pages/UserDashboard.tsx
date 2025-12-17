@@ -15,6 +15,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useBookingNotifications } from "@/hooks/useBookingNotifications";
+import BookingConfirmationDialog from "@/components/BookingConfirmationDialog";
 import Navbar from "@/components/Navbar";
 import { toast } from "@/hooks/use-toast";
 import { format, isBefore, parseISO } from "date-fns";
@@ -43,6 +45,7 @@ interface Profile {
 const UserDashboard = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
   const [newEmail, setNewEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -51,7 +54,23 @@ const UserDashboard = () => {
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [editEmailOpen, setEditEmailOpen] = useState(false);
   const [editedProfile, setEditedProfile] = useState({ full_name: "", phone_number: "" });
+  const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Real-time booking notifications
+  useBookingNotifications({
+    userId,
+    onBookingConfirmed: () => {
+      setConfirmationDialogOpen(true);
+      checkUserAndFetchData();
+    },
+    onBookingRejected: () => {
+      checkUserAndFetchData();
+    },
+    onBookingUpdated: () => {
+      checkUserAndFetchData();
+    },
+  });
 
   useEffect(() => {
     checkUserAndFetchData();
@@ -64,6 +83,7 @@ const UserDashboard = () => {
       return;
     }
 
+    setUserId(session.user.id);
     setUserEmail(session.user.email || "");
 
     // Fetch profile
@@ -187,12 +207,15 @@ const UserDashboard = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "pending":
+        return "bg-red-500";
+      case "confirmed":
       case "active":
         return "bg-green-500";
       case "completed":
         return "bg-blue-500";
       case "cancelled":
-        return "bg-red-500";
+        return "bg-gray-500";
       case "expired":
         return "bg-gray-500";
       default:
@@ -201,13 +224,13 @@ const UserDashboard = () => {
   };
 
   const canCancelBooking = (booking: Booking) => {
-    if (booking.status !== "active") return false;
+    if (!["active", "pending", "confirmed"].includes(booking.status)) return false;
     const bookingDateTime = parseISO(`${booking.booking_date}T${booking.start_time}`);
     return !isBefore(bookingDateTime, new Date());
   };
 
   const upcomingBookings = bookings.filter(
-    (b) => b.status === "active" && !isBefore(parseISO(`${b.booking_date}T${b.start_time}`), new Date())
+    (b) => ["active", "pending", "confirmed"].includes(b.status) && !isBefore(parseISO(`${b.booking_date}T${b.start_time}`), new Date())
   );
 
   const completedBookings = bookings.filter(
@@ -525,6 +548,12 @@ const UserDashboard = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Booking Confirmation Dialog */}
+        <BookingConfirmationDialog
+          open={confirmationDialogOpen}
+          onClose={() => setConfirmationDialogOpen(false)}
+        />
       </div>
 
       <footer className="bg-card border-t border-border py-8 mt-20">

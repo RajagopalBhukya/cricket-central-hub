@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useBookingNotifications } from "@/hooks/useBookingNotifications";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setSelectedDate, setSelectedGround, clearSelection } from "@/store/slices/bookingSlice";
 import Navbar from "@/components/Navbar";
+import BookingConfirmationDialog from "@/components/BookingConfirmationDialog";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import { MapPin, Clock, User, Calendar as CalendarIcon, LogOut, X } from "lucide-react";
 import {
@@ -68,11 +70,35 @@ const UserBooking = () => {
   const [bookingToReschedule, setBookingToReschedule] = useState<UserBooking | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleSlot, setRescheduleSlot] = useState<TimeSlot | null>(null);
+  const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
   const { selectedDate, selectedGround } = useAppSelector((state) => state.booking);
+
+  // Real-time booking notifications
+  useBookingNotifications({
+    userId: user?.id || null,
+    onBookingConfirmed: () => {
+      setConfirmationDialogOpen(true);
+      if (user) fetchUserBookings(user.id);
+      if (selectedGround && selectedDate) {
+        fetchBookedSlots(selectedGround, new Date(selectedDate));
+      }
+    },
+    onBookingRejected: () => {
+      if (user) fetchUserBookings(user.id);
+      if (selectedGround && selectedDate) {
+        fetchBookedSlots(selectedGround, new Date(selectedDate));
+      }
+    },
+    onBookingUpdated: () => {
+      if (selectedGround && selectedDate) {
+        fetchBookedSlots(selectedGround, new Date(selectedDate));
+      }
+    },
+  });
 
   useEffect(() => {
     checkAuth();
@@ -164,14 +190,12 @@ const UserBooking = () => {
     }
   }, [selectedGround, selectedDate]);
 
-  // Real-time subscription for booking updates
+  // Real-time subscription for booking updates on selected ground/date
   useEffect(() => {
     if (!selectedGround || !selectedDate) return;
 
-    const formattedDate = format(new Date(selectedDate), "yyyy-MM-dd");
-    
     const channel = supabase
-      .channel('booking-updates')
+      .channel('booking-slot-updates')
       .on(
         'postgres_changes',
         {
@@ -180,14 +204,9 @@ const UserBooking = () => {
           table: 'bookings',
           filter: `ground_id=eq.${selectedGround}`
         },
-        (payload) => {
-          console.log('Realtime booking update:', payload);
+        () => {
           // Refetch booked slots when any booking changes
           fetchBookedSlots(selectedGround, new Date(selectedDate));
-          // Also refresh user's bookings
-          if (user) {
-            fetchUserBookings(user.id);
-          }
         }
       )
       .subscribe();
@@ -195,44 +214,7 @@ const UserBooking = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedGround, selectedDate, user]);
-
-  // User notification when their booking is confirmed
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel('user-booking-confirmation')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'bookings',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          const newBooking = payload.new as any;
-          const oldBooking = payload.old as any;
-          
-          // Check if status changed from pending to confirmed
-          if (oldBooking.status === 'pending' && newBooking.status === 'confirmed') {
-            toast({
-              title: "✅ Booking Confirmed",
-              description: "Your booking has been confirmed by the admin!",
-            });
-            if (user) {
-              fetchUserBookings(user.id);
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
+  }, [selectedGround, selectedDate]);
 
   // Check if selected ground is day or night based on ground name
   const isDayGround = useCallback((): boolean => {
@@ -337,7 +319,7 @@ const UserBooking = () => {
         setBookingLoading(false);
         setBookingMessage({ 
           type: 'error', 
-          text: "Booking failed. Slot already booked. Please try another slot." 
+          text: "❌ Slot is not available" 
         });
         fetchBookedSlots(selectedGround, new Date(selectedDate));
         return;
@@ -355,7 +337,7 @@ const UserBooking = () => {
       if (error?.code === '23505') { // Unique constraint violation
         setBookingMessage({ 
           type: 'error', 
-          text: "Booking failed. Slot already booked. Please try another slot." 
+          text: "❌ Slot is not available" 
         });
       } else {
         setBookingMessage({ 
@@ -369,7 +351,7 @@ const UserBooking = () => {
 
     setBookingMessage({ 
       type: 'success', 
-      text: "Request sent successfully" 
+      text: "📩 Request sent. Please check your My Bookings section." 
     });
 
     dispatch(clearSelection());
@@ -379,10 +361,10 @@ const UserBooking = () => {
       fetchUserBookings(user.id);
     }
     
-    // Navigate to success page after a short delay
-    setTimeout(() => {
-      navigate(`/booking-success?id=${insertedBookings[0].id}&count=${insertedBookings.length}`);
-    }, 1500);
+    // Refresh booked slots immediately
+    if (selectedGround && selectedDate) {
+      fetchBookedSlots(selectedGround, new Date(selectedDate));
+    }
   };
 
   const handleCancelBooking = async () => {
@@ -661,7 +643,7 @@ const UserBooking = () => {
                         if (isBooked) {
                           setBookingMessage({
                             type: 'error',
-                            text: 'Slot already booked. Please book another slot.'
+                            text: '❌ Slot is not available'
                           });
                           return;
                         }
@@ -828,6 +810,12 @@ const UserBooking = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Booking Confirmation Dialog */}
+      <BookingConfirmationDialog
+        open={confirmationDialogOpen}
+        onClose={() => setConfirmationDialogOpen(false)}
+      />
 
       <footer className="bg-card border-t border-border py-8 mt-20">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
