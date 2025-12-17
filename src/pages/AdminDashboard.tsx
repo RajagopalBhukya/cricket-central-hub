@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Table,
   TableBody,
@@ -33,11 +34,12 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, isWithinInterval } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, subDays, isWithinInterval, isBefore } from "date-fns";
 import { 
-  Users, Calendar, MapPin, DollarSign, Trash2, Edit, Plus, 
+  Users, Calendar as CalendarIcon, MapPin, DollarSign, Trash2, Edit, Plus, 
   LayoutDashboard, UserCog, CalendarDays, Settings, BarChart3,
-  Search, Download, TrendingUp, TrendingDown, LogOut, Bell
+  Search, Download, TrendingUp, TrendingDown, LogOut, Bell, Clock,
+  CheckCircle, XCircle, Home
 } from "lucide-react";
 
 interface User {
@@ -53,14 +55,17 @@ interface Booking {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: "active" | "cancelled" | "completed" | "expired";
+  status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired";
   payment_status: "paid" | "unpaid";
   total_amount: number;
   user_id: string;
   user_name?: string;
   user_phone?: string;
   ground_name?: string;
+  ground_id?: string;
   created_at?: string;
+  booked_by?: string;
+  confirmed_at?: string;
 }
 
 interface Ground {
@@ -73,8 +78,27 @@ interface Ground {
   image_url: string | null;
 }
 
+interface TimeSlot {
+  start: string;
+  end: string;
+  available: boolean;
+  isPast: boolean;
+  price: number;
+  status?: string;
+}
+
+interface Notification {
+  id: string;
+  type: string;
+  message: string;
+  booking: Booking;
+  read: boolean;
+  timestamp: Date;
+}
+
 const AdminDashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -95,11 +119,94 @@ const AdminDashboard = () => {
   const [isDeleteUserOpen, setIsDeleteUserOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  // Admin booking state
+  const [adminBookingGround, setAdminBookingGround] = useState<string>("");
+  const [adminBookingDate, setAdminBookingDate] = useState<Date | undefined>(undefined);
+  const [adminBookingSlots, setAdminBookingSlots] = useState<TimeSlot[]>([]);
+  const [selectedAdminSlots, setSelectedAdminSlots] = useState<TimeSlot[]>([]);
+  const [bookedSlotsForAdmin, setBookedSlotsForAdmin] = useState<{ start_time: string; end_time: string; status: string }[]>([]);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
     checkAdminAccess();
   }, []);
+
+  // Real-time subscription for new bookings
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const channel = supabase
+      .channel('admin-booking-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'bookings'
+        },
+        async (payload) => {
+          console.log('New booking notification:', payload);
+          const newBooking = payload.new as any;
+          
+          // Fetch user and ground details
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', newBooking.user_id)
+            .single();
+          
+          const { data: ground } = await supabase
+            .from('grounds')
+            .select('name')
+            .eq('id', newBooking.ground_id)
+            .single();
+
+          const notification: Notification = {
+            id: newBooking.id,
+            type: 'new_booking',
+            message: `New booking from ${profile?.full_name || 'User'} for ${ground?.name || 'Ground'} on ${format(new Date(newBooking.booking_date), 'PPP')} at ${newBooking.start_time}`,
+            booking: {
+              ...newBooking,
+              user_name: profile?.full_name || 'N/A',
+              ground_name: ground?.name || 'N/A',
+            },
+            read: false,
+            timestamp: new Date(),
+          };
+
+          setNotifications(prev => [notification, ...prev]);
+          
+          // Show toast notification
+          toast({
+            title: "New Booking Request!",
+            description: notification.message,
+          });
+
+          // Refresh bookings
+          fetchBookings();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'bookings'
+        },
+        () => {
+          fetchBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin]);
 
   const checkAdminAccess = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -126,6 +233,7 @@ const AdminDashboard = () => {
     }
 
     setIsAdmin(true);
+    setAdminUserId(session.user.id);
     fetchAllData();
   };
 
@@ -199,7 +307,8 @@ const AdminDashboard = () => {
   const totalRevenue = bookings.filter(b => b.payment_status === "paid").reduce((sum, b) => sum + b.total_amount, 0);
   const thisMonthRevenue = thisMonthBookings.filter(b => b.payment_status === "paid").reduce((sum, b) => sum + b.total_amount, 0);
   const cancelledBookings = bookings.filter(b => b.status === "cancelled");
-  const activeBookings = bookings.filter(b => b.status === "active");
+  const activeBookings = bookings.filter(b => b.status === "active" || b.status === "confirmed");
+  const pendingBookings = bookings.filter(b => b.status === "pending");
 
   // Filtered data
   const filteredUsers = users.filter(user =>
@@ -227,10 +336,17 @@ const AdminDashboard = () => {
     return matchesSearch && matchesDate && matchesStatus;
   });
 
-  const updateBookingStatus = async (bookingId: string, status: "active" | "cancelled" | "completed" | "expired") => {
+  const updateBookingStatus = async (bookingId: string, status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired") => {
+    const updateData: any = { status };
+    
+    if (status === "confirmed" && adminUserId) {
+      updateData.confirmed_at = new Date().toISOString();
+      updateData.confirmed_by = adminUserId;
+    }
+
     const { error } = await supabase
       .from("bookings")
-      .update({ status })
+      .update(updateData)
       .eq("id", bookingId);
 
     if (error) {
@@ -239,6 +355,14 @@ const AdminDashboard = () => {
       toast({ title: "Success", description: "Booking status updated" });
       fetchBookings();
     }
+  };
+
+  const confirmBooking = async (bookingId: string) => {
+    await updateBookingStatus(bookingId, "confirmed");
+  };
+
+  const rejectBooking = async (bookingId: string) => {
+    await updateBookingStatus(bookingId, "cancelled");
   };
 
   const updatePaymentStatus = async (bookingId: string, payment_status: "paid" | "unpaid") => {
@@ -381,6 +505,164 @@ const AdminDashboard = () => {
     }
   };
 
+  // Admin booking functions
+  const fetchBookedSlotsForAdmin = async (groundId: string, date: Date) => {
+    const formattedDate = format(date, "yyyy-MM-dd");
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("start_time, end_time, status")
+      .eq("ground_id", groundId)
+      .eq("booking_date", formattedDate)
+      .in("status", ["pending", "confirmed", "active", "completed"]);
+
+    if (!error && data) {
+      setBookedSlotsForAdmin(data);
+    }
+  };
+
+  useEffect(() => {
+    if (adminBookingGround && adminBookingDate) {
+      fetchBookedSlotsForAdmin(adminBookingGround, adminBookingDate);
+    }
+  }, [adminBookingGround, adminBookingDate]);
+
+  const isDayGround = useCallback((groundId: string): boolean => {
+    const ground = grounds.find(g => g.id === groundId);
+    return ground?.name?.toLowerCase().includes('day') ?? false;
+  }, [grounds]);
+
+  const generateAdminTimeSlots = useCallback((): TimeSlot[] => {
+    if (!adminBookingGround || !adminBookingDate) return [];
+    
+    const slots: TimeSlot[] = [];
+    const now = new Date();
+    const isToday = format(adminBookingDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
+    const currentHour = now.getHours();
+
+    const isDay = isDayGround(adminBookingGround);
+    const startHour = isDay ? 7 : 18;
+    const endHour = isDay ? 18 : 23;
+    const price = isDay ? 600 : 800;
+
+    for (let hour = startHour; hour < endHour; hour++) {
+      const start = `${hour.toString().padStart(2, "0")}:00`;
+      const end = `${(hour + 1).toString().padStart(2, "0")}:00`;
+      const bookedSlot = bookedSlotsForAdmin.find(
+        (slot) => slot.start_time === start || (slot.start_time < end && slot.end_time > start)
+      );
+      const isBooked = !!bookedSlot;
+      const isPast = isToday && hour <= currentHour;
+      slots.push({ 
+        start, 
+        end, 
+        available: !isBooked && !isPast, 
+        isPast, 
+        price,
+        status: bookedSlot?.status 
+      });
+    }
+    return slots;
+  }, [adminBookingDate, adminBookingGround, bookedSlotsForAdmin, isDayGround]);
+
+  useEffect(() => {
+    setAdminBookingSlots(generateAdminTimeSlots());
+  }, [generateAdminTimeSlots]);
+
+  const handleAdminSlotSelect = (slot: TimeSlot) => {
+    if (!slot.available) return;
+    
+    const isAlreadySelected = selectedAdminSlots.some(s => s.start === slot.start);
+    
+    if (isAlreadySelected) {
+      setSelectedAdminSlots(selectedAdminSlots.filter(s => s.start !== slot.start));
+    } else {
+      setSelectedAdminSlots([...selectedAdminSlots, slot]);
+    }
+  };
+
+  const handleAdminBooking = async () => {
+    if (!adminBookingGround || !adminBookingDate || selectedAdminSlots.length === 0 || !adminUserId) {
+      toast({
+        title: "Error",
+        description: "Please select ground, date and time slots",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formattedDate = format(adminBookingDate, "yyyy-MM-dd");
+    
+    // Admin bookings are auto-confirmed
+    const bookingsToInsert = selectedAdminSlots.map(slot => ({
+      ground_id: adminBookingGround,
+      user_id: adminUserId,
+      booking_date: formattedDate,
+      start_time: slot.start,
+      end_time: slot.end,
+      hours: 1,
+      total_amount: slot.price,
+      status: "confirmed" as const,
+      payment_status: "unpaid" as const,
+      booked_by: "admin",
+      confirmed_at: new Date().toISOString(),
+      confirmed_by: adminUserId,
+    }));
+
+    // Check for conflicts
+    for (const booking of bookingsToInsert) {
+      const { data: conflict } = await supabase.rpc('check_booking_conflict', {
+        _ground_id: booking.ground_id,
+        _booking_date: booking.booking_date,
+        _start_time: booking.start_time,
+        _end_time: booking.end_time,
+      });
+
+      if (conflict) {
+        toast({
+          title: "Conflict",
+          description: "One or more slots are already booked",
+          variant: "destructive",
+        });
+        fetchBookedSlotsForAdmin(adminBookingGround, adminBookingDate);
+        return;
+      }
+    }
+
+    const { error } = await supabase.from("bookings").insert(bookingsToInsert);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Booking created successfully" });
+      setSelectedAdminSlots([]);
+      fetchBookedSlotsForAdmin(adminBookingGround, adminBookingDate);
+      fetchBookings();
+    }
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case "pending": return "bg-red-500 hover:bg-red-600";
+      case "confirmed": return "bg-green-500 hover:bg-green-600";
+      case "active": return "bg-green-500 hover:bg-green-600";
+      case "completed": return "bg-blue-500 hover:bg-blue-600";
+      case "cancelled": return "bg-gray-500 hover:bg-gray-600";
+      default: return "bg-gray-500 hover:bg-gray-600";
+    }
+  };
+
+  const getSlotColor = (slot: TimeSlot) => {
+    if (slot.isPast) return "bg-gray-200 text-gray-400 cursor-not-allowed";
+    if (!slot.available) {
+      if (slot.status === "pending") return "bg-red-500 text-white cursor-not-allowed";
+      if (slot.status === "confirmed" || slot.status === "active") return "bg-green-500 text-white cursor-not-allowed";
+      return "bg-gray-300 text-gray-500 cursor-not-allowed";
+    }
+    return "bg-white border-2 border-primary hover:bg-primary/10 cursor-pointer";
+  };
+
+  const unreadNotifications = notifications.filter(n => !n.read).length;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -409,9 +691,54 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/20">
-              <Bell className="w-5 h-5" />
-            </Button>
+            <div className="relative">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-primary-foreground hover:bg-primary-foreground/20"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Bell className="w-5 h-5" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadNotifications}
+                  </span>
+                )}
+              </Button>
+              
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-card rounded-lg shadow-lg border z-50 max-h-96 overflow-y-auto">
+                  <div className="p-3 border-b">
+                    <h3 className="font-semibold text-foreground">Notifications</h3>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No notifications
+                    </div>
+                  ) : (
+                    notifications.slice(0, 10).map((notification) => (
+                      <div 
+                        key={notification.id} 
+                        className={`p-3 border-b hover:bg-muted cursor-pointer ${!notification.read ? 'bg-primary/5' : ''}`}
+                        onClick={() => {
+                          setNotifications(prev => 
+                            prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
+                          );
+                          setActiveTab("pending");
+                          setShowNotifications(false);
+                        }}
+                      >
+                        <p className="text-sm text-foreground">{notification.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {format(notification.timestamp, 'PPp')}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <Button variant="ghost" onClick={handleLogout} className="text-primary-foreground hover:bg-primary-foreground/20">
               <LogOut className="w-4 h-4 mr-2" /> Logout
             </Button>
@@ -429,6 +756,23 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab("dashboard")}
             >
               <LayoutDashboard className="w-4 h-4 mr-2" /> Dashboard
+            </Button>
+            <Button
+              variant={activeTab === "pending" ? "secondary" : "ghost"}
+              className="w-full justify-start relative"
+              onClick={() => setActiveTab("pending")}
+            >
+              <Clock className="w-4 h-4 mr-2" /> Pending Approvals
+              {pendingBookings.length > 0 && (
+                <Badge className="ml-auto bg-red-500">{pendingBookings.length}</Badge>
+              )}
+            </Button>
+            <Button
+              variant={activeTab === "admin-booking" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("admin-booking")}
+            >
+              <CalendarIcon className="w-4 h-4 mr-2" /> Book Slot
             </Button>
             <Button
               variant={activeTab === "bookings" ? "secondary" : "ghost"}
@@ -458,6 +802,15 @@ const AdminDashboard = () => {
             >
               <BarChart3 className="w-4 h-4 mr-2" /> Reports
             </Button>
+            <div className="pt-4 border-t mt-4">
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => navigate("/dashboard")}
+              >
+                <Home className="w-4 h-4 mr-2" /> User Dashboard
+              </Button>
+            </div>
           </nav>
         </aside>
 
@@ -466,8 +819,17 @@ const AdminDashboard = () => {
           {/* Mobile Tab Navigation */}
           <div className="lg:hidden mb-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-5 w-full">
+              <TabsList className="grid grid-cols-7 w-full">
                 <TabsTrigger value="dashboard"><LayoutDashboard className="w-4 h-4" /></TabsTrigger>
+                <TabsTrigger value="pending" className="relative">
+                  <Clock className="w-4 h-4" />
+                  {pendingBookings.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {pendingBookings.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="admin-booking"><CalendarIcon className="w-4 h-4" /></TabsTrigger>
                 <TabsTrigger value="bookings"><CalendarDays className="w-4 h-4" /></TabsTrigger>
                 <TabsTrigger value="users"><UserCog className="w-4 h-4" /></TabsTrigger>
                 <TabsTrigger value="grounds"><MapPin className="w-4 h-4" /></TabsTrigger>
@@ -501,7 +863,7 @@ const AdminDashboard = () => {
                         <p className="text-sm text-muted-foreground">Today's Bookings</p>
                         <p className="text-3xl font-bold">{todayBookings.length}</p>
                       </div>
-                      <Calendar className="w-10 h-10 text-green-500" />
+                      <CalendarIcon className="w-10 h-10 text-green-500" />
                     </div>
                   </CardContent>
                 </Card>
@@ -516,14 +878,14 @@ const AdminDashboard = () => {
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className={pendingBookings.length > 0 ? "border-red-500 border-2" : ""}>
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Active Grounds</p>
-                        <p className="text-3xl font-bold">{grounds.filter(g => g.is_active).length}</p>
+                        <p className="text-sm text-muted-foreground">Pending Approvals</p>
+                        <p className="text-3xl font-bold text-red-500">{pendingBookings.length}</p>
                       </div>
-                      <MapPin className="w-10 h-10 text-purple-500" />
+                      <Clock className="w-10 h-10 text-red-500" />
                     </div>
                   </CardContent>
                 </Card>
@@ -535,7 +897,7 @@ const AdminDashboard = () => {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Active Bookings</p>
+                        <p className="text-sm text-muted-foreground">Confirmed Bookings</p>
                         <p className="text-2xl font-bold text-green-600">{activeBookings.length}</p>
                       </div>
                       <TrendingUp className="w-8 h-8 text-green-500" />
@@ -590,11 +952,7 @@ const AdminDashboard = () => {
                           <TableCell>{booking.ground_name}</TableCell>
                           <TableCell>{format(new Date(booking.booking_date), "PP")}</TableCell>
                           <TableCell>
-                            <Badge className={
-                              booking.status === "active" ? "bg-green-500" :
-                              booking.status === "completed" ? "bg-blue-500" :
-                              booking.status === "cancelled" ? "bg-red-500" : "bg-gray-500"
-                            }>
+                            <Badge className={getStatusBadgeColor(booking.status)}>
                               {booking.status}
                             </Badge>
                           </TableCell>
@@ -605,6 +963,185 @@ const AdminDashboard = () => {
                   </Table>
                 </CardContent>
               </Card>
+            </div>
+          )}
+
+          {/* Pending Approvals Tab */}
+          {activeTab === "pending" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Pending Booking Approvals</h2>
+              
+              {pendingBookings.length === 0 ? (
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                    <p className="text-muted-foreground">No pending bookings to approve</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {pendingBookings.map((booking) => (
+                    <Card key={booking.id} className="border-red-200 border-2">
+                      <CardContent className="pt-6">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-red-500">PENDING</Badge>
+                              <span className="text-sm text-muted-foreground">
+                                {booking.created_at && format(new Date(booking.created_at), 'PPp')}
+                              </span>
+                            </div>
+                            <h3 className="text-lg font-semibold">{booking.user_name}</h3>
+                            <p className="text-muted-foreground">{booking.user_phone}</p>
+                            <div className="flex items-center gap-4 mt-2">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-4 h-4" />
+                                <span>{booking.ground_name}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <CalendarIcon className="w-4 h-4" />
+                                <span>{format(new Date(booking.booking_date), 'PPP')}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                <span>{booking.start_time} - {booking.end_time}</span>
+                              </div>
+                            </div>
+                            <p className="font-bold text-primary mt-2">₹{booking.total_amount}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              onClick={() => confirmBooking(booking.id)}
+                              className="bg-green-500 hover:bg-green-600"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" /> Confirm
+                            </Button>
+                            <Button 
+                              variant="destructive"
+                              onClick={() => rejectBooking(booking.id)}
+                            >
+                              <XCircle className="w-4 h-4 mr-2" /> Reject
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Admin Booking Tab */}
+          {activeTab === "admin-booking" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Book Slot (Admin)</h2>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Select Ground</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 gap-2">
+                      {grounds.filter(g => g.is_active).map((ground) => (
+                        <Button
+                          key={ground.id}
+                          variant={adminBookingGround === ground.id ? "default" : "outline"}
+                          className="justify-start h-auto py-3"
+                          onClick={() => {
+                            setAdminBookingGround(ground.id);
+                            setSelectedAdminSlots([]);
+                          }}
+                        >
+                          <div className="text-left">
+                            <p className="font-medium">{ground.name}</p>
+                            <p className="text-xs opacity-70">{ground.location} • ₹{ground.price_per_hour}/hr</p>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Select Date</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Calendar
+                      mode="single"
+                      selected={adminBookingDate}
+                      onSelect={(date) => {
+                        setAdminBookingDate(date);
+                        setSelectedAdminSlots([]);
+                      }}
+                      disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                      className="rounded-md border"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {adminBookingGround && adminBookingDate && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Select Time Slots</CardTitle>
+                    <CardDescription>
+                      <div className="flex gap-4 mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-red-500 rounded"></div>
+                          <span className="text-sm">Pending</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 bg-green-500 rounded"></div>
+                          <span className="text-sm">Confirmed</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-primary rounded"></div>
+                          <span className="text-sm">Available</span>
+                        </div>
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                      {adminBookingSlots.map((slot) => (
+                        <Button
+                          key={slot.start}
+                          variant="outline"
+                          className={`${getSlotColor(slot)} ${
+                            selectedAdminSlots.some(s => s.start === slot.start) 
+                              ? 'ring-2 ring-primary bg-primary text-primary-foreground' 
+                              : ''
+                          }`}
+                          onClick={() => handleAdminSlotSelect(slot)}
+                          disabled={!slot.available}
+                        >
+                          <div className="text-center">
+                            <p className="text-sm font-medium">{slot.start}</p>
+                            <p className="text-xs">₹{slot.price}</p>
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+
+                    {selectedAdminSlots.length > 0 && (
+                      <div className="mt-6 p-4 bg-muted rounded-lg">
+                        <h4 className="font-semibold mb-2">Booking Summary</h4>
+                        <p>Selected Slots: {selectedAdminSlots.length}</p>
+                        <p>Total: ₹{selectedAdminSlots.reduce((sum, s) => sum + s.price, 0)}</p>
+                        <Button 
+                          className="mt-4 w-full" 
+                          onClick={handleAdminBooking}
+                        >
+                          Confirm Admin Booking
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 
@@ -640,6 +1177,8 @@ const AdminDashboard = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -671,6 +1210,9 @@ const AdminDashboard = () => {
                               <div>
                                 <p className="font-medium">{booking.user_name}</p>
                                 <p className="text-xs text-muted-foreground">{booking.user_phone}</p>
+                                {booking.booked_by === "admin" && (
+                                  <Badge variant="outline" className="text-xs">Admin</Badge>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>{booking.ground_name}</TableCell>
@@ -686,6 +1228,8 @@ const AdminDashboard = () => {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="confirmed">Confirmed</SelectItem>
                                   <SelectItem value="active">Active</SelectItem>
                                   <SelectItem value="completed">Completed</SelectItem>
                                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -707,13 +1251,33 @@ const AdminDashboard = () => {
                               </Select>
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => deleteBooking(booking.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <div className="flex gap-1">
+                                {booking.status === "pending" && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      className="bg-green-500 hover:bg-green-600"
+                                      onClick={() => confirmBooking(booking.id)}
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => rejectBooking(booking.id)}
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => deleteBooking(booking.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -992,7 +1556,11 @@ const AdminDashboard = () => {
                       <span className="font-bold">{bookings.length}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b">
-                      <span>Active Bookings</span>
+                      <span>Pending Bookings</span>
+                      <span className="font-bold text-red-600">{pendingBookings.length}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span>Confirmed Bookings</span>
                       <span className="font-bold text-green-600">{activeBookings.length}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 border-b">
