@@ -16,7 +16,10 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          booked_by: string | null
           booking_date: string
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string | null
           end_time: string
           ground_id: string
@@ -32,7 +35,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          booked_by?: string | null
           booking_date: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           end_time: string
           ground_id: string
@@ -48,7 +54,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          booked_by?: string | null
           booking_date?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string | null
           end_time?: string
           ground_id?: string
@@ -206,7 +215,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      booking_status: "active" | "completed" | "cancelled" | "expired"
+      booking_status:
+        | "active"
+        | "completed"
+        | "cancelled"
+        | "expired"
+        | "pending"
+        | "confirmed"
       payment_status: "unpaid" | "paid"
     }
     CompositeTypes: {
@@ -336,7 +351,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      booking_status: ["active", "completed", "cancelled", "expired"],
+      booking_status: [
+        "active",
+        "completed",
+        "cancelled",
+        "expired",
+        "pending",
+        "confirmed",
+      ],
       payment_status: ["unpaid", "paid"],
     },
   },
