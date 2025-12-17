@@ -24,11 +24,10 @@ serve(async (req) => {
       );
     }
 
-    // Block admin credentials from using this endpoint
+    // Block admin credentials from using this endpoint (only check email, as it's the unique identifier)
     const ADMIN_EMAIL = "rajagopalbhukya614@gmail.com";
-    const ADMIN_PHONE = "9381115918";
     
-    if (email === ADMIN_EMAIL || phone === ADMIN_PHONE) {
+    if (email === ADMIN_EMAIL) {
       return new Response(
         JSON.stringify({ error: "Please use admin login with password" }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
