@@ -150,6 +150,8 @@ export type Database = {
           created_at: string | null
           full_name: string
           id: string
+          is_online: boolean | null
+          last_active: string | null
           phone_number: string
           updated_at: string | null
         }
@@ -157,6 +159,8 @@ export type Database = {
           created_at?: string | null
           full_name: string
           id: string
+          is_online?: boolean | null
+          last_active?: string | null
           phone_number: string
           updated_at?: string | null
         }
@@ -164,6 +168,8 @@ export type Database = {
           created_at?: string | null
           full_name?: string
           id?: string
+          is_online?: boolean | null
+          last_active?: string | null
           phone_number?: string
           updated_at?: string | null
         }
@@ -212,6 +218,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_completed_bookings: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
