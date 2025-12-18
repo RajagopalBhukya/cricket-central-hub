@@ -681,26 +681,26 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Admin Header */}
-      <header className="bg-primary text-primary-foreground py-4 px-6 sticky top-0 z-50">
+      <header className="bg-primary text-primary-foreground py-3 px-3 sm:py-4 sm:px-6 sticky top-0 z-50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <LayoutDashboard className="w-8 h-8" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LayoutDashboard className="w-6 h-6 sm:w-8 sm:h-8" />
             <div>
-              <h1 className="text-xl font-bold">Box Cricket Admin</h1>
-              <p className="text-xs opacity-80">Management Dashboard</p>
+              <h1 className="text-base sm:text-xl font-bold">Box Cricket Admin</h1>
+              <p className="text-[10px] sm:text-xs opacity-80 hidden sm:block">Management Dashboard</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="relative">
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-primary-foreground hover:bg-primary-foreground/20"
+                className="text-primary-foreground hover:bg-primary-foreground/20 h-8 w-8 sm:h-10 sm:w-10"
                 onClick={() => setShowNotifications(!showNotifications)}
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {unreadNotifications > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] sm:text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
                     {unreadNotifications}
                   </span>
                 )}
@@ -708,12 +708,12 @@ const AdminDashboard = () => {
               
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-card rounded-lg shadow-lg border z-50 max-h-96 overflow-y-auto">
+                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-card rounded-lg shadow-lg border z-50 max-h-96 overflow-y-auto">
                   <div className="p-3 border-b">
-                    <h3 className="font-semibold text-foreground">Notifications</h3>
+                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Notifications</h3>
                   </div>
                   {notifications.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground">
+                    <div className="p-4 text-center text-muted-foreground text-sm">
                       No notifications
                     </div>
                   ) : (
@@ -729,8 +729,8 @@ const AdminDashboard = () => {
                           setShowNotifications(false);
                         }}
                       >
-                        <p className="text-sm text-foreground">{notification.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs sm:text-sm text-foreground">{notification.message}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                           {format(notification.timestamp, 'PPp')}
                         </p>
                       </div>
@@ -739,16 +739,17 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
-            <Button variant="ghost" onClick={handleLogout} className="text-primary-foreground hover:bg-primary-foreground/20">
-              <LogOut className="w-4 h-4 mr-2" /> Logout
+            <Button variant="ghost" onClick={handleLogout} className="text-primary-foreground hover:bg-primary-foreground/20 h-8 px-2 sm:h-10 sm:px-4 text-xs sm:text-sm">
+              <LogOut className="w-4 h-4 sm:mr-2" /> 
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-card border-r min-h-[calc(100vh-73px)] p-4 hidden lg:block">
+        {/* Sidebar - Hidden on mobile */}
+        <aside className="w-64 bg-card border-r min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-73px)] p-4 hidden lg:block">
           <nav className="space-y-2">
             <Button
               variant={activeTab === "dashboard" ? "secondary" : "ghost"}
@@ -764,7 +765,7 @@ const AdminDashboard = () => {
             >
               <Clock className="w-4 h-4 mr-2" /> Pending Approvals
               {pendingBookings.length > 0 && (
-                <Badge className="ml-auto bg-red-500">{pendingBookings.length}</Badge>
+                <Badge className="ml-auto bg-destructive">{pendingBookings.length}</Badge>
               )}
             </Button>
             <Button
@@ -815,114 +816,159 @@ const AdminDashboard = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
-          {/* Mobile Tab Navigation */}
-          <div className="lg:hidden mb-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-7 w-full">
-                <TabsTrigger value="dashboard"><LayoutDashboard className="w-4 h-4" /></TabsTrigger>
-                <TabsTrigger value="pending" className="relative">
-                  <Clock className="w-4 h-4" />
-                  {pendingBookings.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                      {pendingBookings.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="admin-booking"><CalendarIcon className="w-4 h-4" /></TabsTrigger>
-                <TabsTrigger value="bookings"><CalendarDays className="w-4 h-4" /></TabsTrigger>
-                <TabsTrigger value="users"><UserCog className="w-4 h-4" /></TabsTrigger>
-                <TabsTrigger value="grounds"><MapPin className="w-4 h-4" /></TabsTrigger>
-                <TabsTrigger value="reports"><BarChart3 className="w-4 h-4" /></TabsTrigger>
-              </TabsList>
-            </Tabs>
+        <main className="flex-1 p-3 sm:p-6 overflow-x-hidden">
+          {/* Mobile Tab Navigation - Horizontal scroll */}
+          <div className="lg:hidden mb-4 sm:mb-6 -mx-3 px-3 overflow-x-auto">
+            <div className="flex gap-1 min-w-max pb-2">
+              <Button
+                variant={activeTab === "dashboard" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                onClick={() => setActiveTab("dashboard")}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={activeTab === "pending" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0 relative"
+                onClick={() => setActiveTab("pending")}
+              >
+                <Clock className="w-4 h-4" />
+                {pendingBookings.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                    {pendingBookings.length}
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant={activeTab === "admin-booking" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                onClick={() => setActiveTab("admin-booking")}
+              >
+                <CalendarIcon className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={activeTab === "bookings" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                onClick={() => setActiveTab("bookings")}
+              >
+                <CalendarDays className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={activeTab === "users" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                onClick={() => setActiveTab("users")}
+              >
+                <UserCog className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={activeTab === "grounds" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                onClick={() => setActiveTab("grounds")}
+              >
+                <MapPin className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={activeTab === "reports" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                onClick={() => setActiveTab("reports")}
+              >
+                <BarChart3 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Dashboard Tab */}
           {activeTab === "dashboard" && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Dashboard Overview</h2>
+            <div className="space-y-4 sm:space-y-6">
+              <h2 className="text-xl sm:text-2xl font-bold">Dashboard Overview</h2>
               
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-3 sm:pt-6 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Total Users</p>
-                        <p className="text-3xl font-bold">{users.length}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Total Users</p>
+                        <p className="text-xl sm:text-3xl font-bold">{users.length}</p>
                       </div>
-                      <Users className="w-10 h-10 text-blue-500" />
+                      <Users className="w-6 h-6 sm:w-10 sm:h-10 text-blue-500" />
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-3 sm:pt-6 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Today's Bookings</p>
-                        <p className="text-3xl font-bold">{todayBookings.length}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Today's Bookings</p>
+                        <p className="text-xl sm:text-3xl font-bold">{todayBookings.length}</p>
                       </div>
-                      <CalendarIcon className="w-10 h-10 text-green-500" />
+                      <CalendarIcon className="w-6 h-6 sm:w-10 sm:h-10 text-primary" />
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-3 sm:pt-6 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Total Revenue</p>
-                        <p className="text-3xl font-bold">₹{totalRevenue.toLocaleString()}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Total Revenue</p>
+                        <p className="text-lg sm:text-3xl font-bold">₹{totalRevenue.toLocaleString()}</p>
                       </div>
-                      <DollarSign className="w-10 h-10 text-yellow-500" />
+                      <DollarSign className="w-6 h-6 sm:w-10 sm:h-10 text-yellow-500" />
                     </div>
                   </CardContent>
                 </Card>
-                <Card className={pendingBookings.length > 0 ? "border-red-500 border-2" : ""}>
-                  <CardContent className="pt-6">
+                <Card className={pendingBookings.length > 0 ? "border-destructive border-2" : ""}>
+                  <CardContent className="p-3 sm:pt-6 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Pending Approvals</p>
-                        <p className="text-3xl font-bold text-red-500">{pendingBookings.length}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Pending</p>
+                        <p className="text-xl sm:text-3xl font-bold text-destructive">{pendingBookings.length}</p>
                       </div>
-                      <Clock className="w-10 h-10 text-red-500" />
+                      <Clock className="w-6 h-6 sm:w-10 sm:h-10 text-destructive" />
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Secondary Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-3 sm:pt-6 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Confirmed Bookings</p>
-                        <p className="text-2xl font-bold text-green-600">{activeBookings.length}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Confirmed Bookings</p>
+                        <p className="text-lg sm:text-2xl font-bold text-primary">{activeBookings.length}</p>
                       </div>
-                      <TrendingUp className="w-8 h-8 text-green-500" />
+                      <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-3 sm:pt-6 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Cancelled Bookings</p>
-                        <p className="text-2xl font-bold text-red-600">{cancelledBookings.length}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Cancelled Bookings</p>
+                        <p className="text-lg sm:text-2xl font-bold text-destructive">{cancelledBookings.length}</p>
                       </div>
-                      <TrendingDown className="w-8 h-8 text-red-500" />
+                      <TrendingDown className="w-6 h-6 sm:w-8 sm:h-8 text-destructive" />
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-3 sm:pt-6 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">This Month Revenue</p>
-                        <p className="text-2xl font-bold text-primary">₹{thisMonthRevenue.toLocaleString()}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">This Month Revenue</p>
+                        <p className="text-lg sm:text-2xl font-bold text-primary">₹{thisMonthRevenue.toLocaleString()}</p>
                       </div>
-                      <DollarSign className="w-8 h-8 text-primary" />
+                      <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                     </div>
                   </CardContent>
                 </Card>
