@@ -384,10 +384,14 @@ const UserBooking = () => {
     } else {
       toast({
         title: "Booking Cancelled",
-        description: "Your booking has been cancelled successfully.",
+        description: "Your booking has been cancelled. The slot is now available for others.",
       });
       if (user) {
         fetchUserBookings(user.id);
+      }
+      // Immediately refresh booked slots so the slot becomes available
+      if (selectedGround && selectedDate) {
+        fetchBookedSlots(selectedGround, new Date(selectedDate));
       }
     }
     setCancelDialogOpen(false);
@@ -471,29 +475,29 @@ const UserBooking = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-20">
+      <div className="container mx-auto px-4 py-16 sm:py-20">
         {/* User Profile Header */}
-        <Card className="mb-8">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-6 h-6 text-primary" />
+        <Card className="mb-6 sm:mb-8">
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <User className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-semibold">{profile?.full_name || "User"}</h2>
-                  <p className="text-muted-foreground">{user?.email}</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-semibold truncate">{profile?.full_name || "User"}</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{user?.email}</p>
                   {profile?.phone_number && (
-                    <p className="text-sm text-muted-foreground">{profile.phone_number}</p>
+                    <p className="text-xs text-muted-foreground">{profile.phone_number}</p>
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => navigate("/dashboard")}>
+              <div className="flex gap-2 sm:gap-2">
+                <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")} className="text-xs sm:text-sm">
                   My Bookings
                 </Button>
-                <Button variant="ghost" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-2" />
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs sm:text-sm">
+                  <LogOut className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                   Logout
                 </Button>
               </div>
@@ -503,26 +507,27 @@ const UserBooking = () => {
 
         {/* Active Bookings */}
         {userBookings.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Your Active Bookings</CardTitle>
-              <CardDescription>You can cancel or reschedule your bookings below</CardDescription>
+          <Card className="mb-6 sm:mb-8">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Your Active Bookings</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">You can cancel or reschedule your bookings below</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+              <div className="space-y-2 sm:space-y-3">
                 {userBookings.map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                    <div>
-                      <p className="font-medium">{booking.ground_name}</p>
-                      <p className="text-sm text-muted-foreground">
+                  <div key={booking.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-muted rounded-lg gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base truncate">{booking.ground_name}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {format(new Date(booking.booking_date), "PPP")} | {booking.start_time} - {booking.end_time}
                       </p>
-                      <p className="text-sm font-medium text-primary">₹{booking.total_amount}</p>
+                      <p className="text-xs sm:text-sm font-medium text-primary">₹{booking.total_amount}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
                       <Button
                         variant="outline"
                         size="sm"
+                        className="text-xs sm:text-sm"
                         onClick={() => {
                           setBookingToReschedule(booking);
                           setRescheduleDialogOpen(true);
@@ -533,12 +538,13 @@ const UserBooking = () => {
                       <Button
                         variant="destructive"
                         size="sm"
+                        className="text-xs sm:text-sm"
                         onClick={() => {
                           setBookingToCancel(booking);
                           setCancelDialogOpen(true);
                         }}
                       >
-                        <X className="w-4 h-4 mr-1" />
+                        <X className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         Cancel
                       </Button>
                     </div>
@@ -549,7 +555,7 @@ const UserBooking = () => {
           </Card>
         )}
 
-        <h1 className="text-4xl font-bold text-center mb-8 text-primary">Book a Slot</h1>
+        <h1 className="text-2xl sm:text-4xl font-bold text-center mb-6 sm:mb-8 text-primary">Book a Slot</h1>
 
         {/* Booking Message */}
         {bookingMessage && (
@@ -566,13 +572,13 @@ const UserBooking = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
           {/* Ground Selection */}
           <div>
-            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-2">
               <MapPin className="w-5 h-5" /> Select Ground
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {grounds.map((ground) => (
                 <Card
                   key={ground.id}
@@ -581,16 +587,16 @@ const UserBooking = () => {
                   }`}
                   onClick={() => handleGroundSelect(ground.id)}
                 >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{ground.name}</CardTitle>
-                    <CardDescription>{ground.location}</CardDescription>
+                  <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
+                    <CardTitle className="text-base sm:text-lg">{ground.name}</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">{ground.location}</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-sm text-muted-foreground">
+                  <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                    <div className="text-xs sm:text-sm text-muted-foreground">
                       {ground.name.toLowerCase().includes('day') ? (
-                        <p>Day Slots (7:00 AM - 6:00 PM): <span className="font-bold text-primary">₹600/hr</span></p>
+                        <p>Day Slots (7AM - 6PM): <span className="font-bold text-primary">₹600/hr</span></p>
                       ) : (
-                        <p>Night Slots (6:00 PM - 11:00 PM): <span className="font-bold text-primary">₹800/hr</span></p>
+                        <p>Night Slots (6PM - 11PM): <span className="font-bold text-primary">₹800/hr</span></p>
                       )}
                     </div>
                   </CardContent>
@@ -601,11 +607,11 @@ const UserBooking = () => {
 
           {/* Date Selection */}
           <div>
-            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-2">
               <CalendarIcon className="w-5 h-5" /> Select Date
             </h2>
             <Card>
-              <CardContent className="p-4">
+              <CardContent className="p-2 sm:p-4">
                 <Calendar
                   mode="single"
                   selected={selectedDate ? new Date(selectedDate) : undefined}
@@ -614,80 +620,88 @@ const UserBooking = () => {
                     isBefore(startOfDay(date), startOfDay(new Date())) ||
                     isBefore(addDays(new Date(), 30), date)
                   }
-                  className="rounded-md"
+                  className="rounded-md w-full"
                 />
               </CardContent>
             </Card>
           </div>
 
-          {/* Time Slot Selection */}
-          <div>
-            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+          {/* Time Slot Selection with Opacity Transition */}
+          <div className={`transition-all duration-300 ease-in-out ${
+            selectedGround && selectedDate ? 'opacity-100' : 'opacity-30 pointer-events-none'
+          }`}>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5" /> Select Time
             </h2>
-            {selectedGround && selectedDate ? (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex gap-4 mb-3 text-sm">
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-500 rounded"></div> Pending</div>
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 bg-green-500 rounded"></div> Confirmed</div>
-                    <div className="flex items-center gap-1"><div className="w-3 h-3 border-2 border-primary rounded"></div> Available</div>
+            <Card>
+              <CardContent className="p-3 sm:p-4">
+                {/* Legend */}
+                <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 text-xs sm:text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                    <span>Available</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {timeSlots.map((slot) => {
-                      const isSelected = selectedSlots.some(s => s.start === slot.start);
-                      const isNight = parseInt(slot.start) >= 18;
-                      const isBooked = !slot.available && !slot.isPast;
-                      
-                      const handleSlotClick = () => {
-                        if (isBooked) {
-                          setBookingMessage({
-                            type: 'error',
-                            text: '❌ Slot is not available'
-                          });
-                          return;
-                        }
-                        if (slot.available) {
-                          handleTimeSlotSelect(slot);
-                        }
-                      };
-                      
-                      return (
-                        <Button
-                          key={slot.start}
-                          variant={
-                            isSelected
-                              ? "default"
-                              : slot.isPast
-                              ? "secondary"
-                              : "outline"
-                          }
-                          disabled={slot.isPast || isBooked}
-                          onClick={handleSlotClick}
-                          className={`text-sm flex flex-col h-auto py-2 ${slot.isPast ? "line-through opacity-50" : ""} ${
-                            isBooked && slot.status === "pending" ? "!bg-red-500 !text-white cursor-not-allowed" : ""
-                          } ${
-                            isBooked && (slot.status === "confirmed" || slot.status === "active") ? "!bg-green-500 !text-white cursor-not-allowed" : ""
-                          }`}
-                        >
-                          <span>{slot.start} - {slot.end}</span>
-                          <span className={`text-xs ${isSelected ? 'text-primary-foreground' : isBooked ? 'text-white' : 'text-muted-foreground'}`}>
-                            {isBooked ? (slot.status === "pending" ? "Pending" : "Confirmed") : `₹${slot.price}`}
-                          </span>
-                          {slot.isPast && <span className="text-xs">(Past)</span>}
-                        </Button>
-                      );
-                    })}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-destructive rounded"></div>
+                    <span>Pending</span>
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  Please select a ground and date first
-                </CardContent>
-              </Card>
-            )}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-pink-500 rounded"></div>
+                    <span>Booked</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-primary rounded"></div>
+                    <span>Your Booking</span>
+                  </div>
+                </div>
+
+                {/* Time Slots Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {timeSlots.map((slot) => {
+                    const isSelected = selectedSlots.some(s => s.start === slot.start);
+                    const isBooked = !slot.available && !slot.isPast;
+                    const isPending = isBooked && slot.status === "pending";
+                    const isConfirmed = isBooked && (slot.status === "confirmed" || slot.status === "active");
+                    
+                    const getSlotClass = () => {
+                      if (slot.isPast) return "bg-muted text-muted-foreground cursor-not-allowed opacity-50 line-through";
+                      if (isPending) return "!bg-destructive !text-destructive-foreground cursor-not-allowed";
+                      if (isConfirmed) return "!bg-pink-500 !text-white cursor-not-allowed";
+                      if (isSelected) return "bg-primary text-primary-foreground";
+                      return "bg-blue-500/10 border-2 border-blue-500 text-blue-700 hover:bg-blue-500/20";
+                    };
+                    
+                    const handleSlotClick = () => {
+                      if (isBooked) {
+                        setBookingMessage({
+                          type: 'error',
+                          text: '❌ Slot is not available'
+                        });
+                        return;
+                      }
+                      if (slot.available && !slot.isPast) {
+                        handleTimeSlotSelect(slot);
+                      }
+                    };
+                    
+                    return (
+                      <Button
+                        key={slot.start}
+                        variant="ghost"
+                        disabled={slot.isPast}
+                        onClick={handleSlotClick}
+                        className={`text-sm flex flex-col h-auto py-2 px-2 sm:px-3 transition-all duration-200 ${getSlotClass()}`}
+                      >
+                        <span className="font-medium text-xs sm:text-sm">{slot.start} - {slot.end}</span>
+                        <span className="text-[10px] sm:text-xs opacity-90">
+                          {slot.isPast ? "(Past)" : isBooked ? (isPending ? "Pending" : "Booked") : `₹${slot.price}`}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 

@@ -94,16 +94,16 @@ const MyBookings = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-red-500";
+        return "bg-destructive hover:bg-destructive/90";
       case "confirmed":
       case "active":
-        return "bg-green-500";
+        return "bg-primary hover:bg-primary/90";
       case "completed":
-        return "bg-blue-500";
+        return "bg-blue-500 hover:bg-blue-600";
       case "cancelled":
-        return "bg-gray-500";
+        return "bg-muted-foreground hover:bg-muted-foreground/90";
       default:
-        return "bg-gray-500";
+        return "bg-muted-foreground hover:bg-muted-foreground/90";
     }
   };
 
@@ -128,11 +128,13 @@ const MyBookings = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-20">
-        <h1 className="text-4xl font-bold text-center mb-12">My Bookings</h1>
+      <div className="container mx-auto px-4 py-16 sm:py-20">
+        <h1 className="text-2xl sm:text-4xl font-bold text-center mb-8 sm:mb-12">My Bookings</h1>
 
         {loading ? (
-          <p className="text-center text-muted-foreground">Loading bookings...</p>
+          <div className="flex justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
         ) : bookings.length === 0 ? (
           <Card className="max-w-2xl mx-auto">
             <CardContent className="pt-6 text-center">
@@ -140,40 +142,40 @@ const MyBookings = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
             {bookings.map((booking) => (
               <Card key={booking.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="text-lg">{booking.ground_name}</span>
-                    <Badge className={getStatusColor(booking.status)}>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className="text-base sm:text-lg">{booking.ground_name}</span>
+                    <Badge className={`${getStatusColor(booking.status)} w-fit`}>
                       {getStatusLabel(booking.status)}
                     </Badge>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {booking.ground_location}
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0 space-y-2 sm:space-y-3">
+                  <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+                    <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">{booking.ground_location}</span>
                   </div>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4 mr-2" />
+                  <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
                     {format(new Date(booking.booking_date), "PPP")}
                   </div>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Clock className="w-4 h-4 mr-2" />
+                  <div className="flex items-center text-xs sm:text-sm text-muted-foreground">
+                    <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
                     {booking.start_time} - {booking.end_time}
                   </div>
                   <div className="pt-2 border-t">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Total Amount:</span>
-                      <span className="text-lg font-bold text-primary">
+                      <span className="text-xs sm:text-sm font-medium">Total Amount:</span>
+                      <span className="text-base sm:text-lg font-bold text-primary">
                         ₹{booking.total_amount}
                       </span>
                     </div>
                     <div className="flex justify-between items-center mt-1">
-                      <span className="text-xs text-muted-foreground">Payment:</span>
-                      <Badge variant={booking.payment_status === "paid" ? "default" : "secondary"}>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">Payment:</span>
+                      <Badge variant={booking.payment_status === "paid" ? "default" : "secondary"} className="text-xs">
                         {booking.payment_status}
                       </Badge>
                     </div>

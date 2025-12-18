@@ -61,12 +61,12 @@ const Navbar = () => {
 
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
+    <nav className="sticky top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center space-x-3">
-            <img src={bcLogo} alt="BC Logo" className="h-12 w-12 object-contain" />
-            <span className="text-xl font-bold text-foreground">Box Cricket</span>
+        <div className="flex items-center justify-between h-14 sm:h-16">
+          <Link to="/" className="flex items-center space-x-2 sm:space-x-3">
+            <img src={bcLogo} alt="BC Logo" className="h-8 w-8 sm:h-12 sm:w-12 object-contain" />
+            <span className="text-lg sm:text-xl font-bold text-foreground">Box Cricket</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -77,31 +77,21 @@ const Navbar = () => {
             {user && <NavLink to="/user/booking">Book Now</NavLink>}
           </div>
 
-          <div className="flex items-center space-x-4">
-            {/* Mobile Menu Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
-
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar>
+                  <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                       <AvatarFallback className="bg-primary text-primary-foreground">
-                        <UserIcon className="h-5 w-5" />
+                        <UserIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem disabled className="flex flex-col items-start">
-                    <span className="text-sm font-medium">{user.email}</span>
+                    <span className="text-sm font-medium truncate max-w-full">{user.email}</span>
                     <span className="text-xs text-muted-foreground">{isAdmin ? "Admin" : "User"}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -130,36 +120,51 @@ const Navbar = () => {
               </DropdownMenu>
             ) : (
               <Link to="/auth">
-                <Button variant="default" size="sm">
-                  <UserIcon className="h-4 w-4 mr-1" />
+                <Button variant="default" size="sm" className="text-xs sm:text-sm">
+                  <UserIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   Login
                 </Button>
               </Link>
             )}
+
+            {/* Mobile Menu Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-8 w-8 sm:h-10 sm:w-10"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            >
+              <div className="relative w-5 h-5">
+                <span className={`absolute left-0 w-5 h-0.5 bg-foreground transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'top-2.5 rotate-45' : 'top-1'}`} />
+                <span className={`absolute left-0 top-2.5 w-5 h-0.5 bg-foreground transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'opacity-0' : 'opacity-100'}`} />
+                <span className={`absolute left-0 w-5 h-0.5 bg-foreground transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'top-2.5 -rotate-45' : 'top-4'}`} />
+              </div>
+            </Button>
           </div>
         </div>
 
-        {/* Mobile Navigation Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border">
-            <div className="flex flex-col space-y-3">
+        {/* Mobile Navigation Menu with Animation */}
+        <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="py-4 border-t border-border">
+            <div className="flex flex-col space-y-1">
               <Link
                 to="/"
-                className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                className="px-4 py-3 text-foreground hover:bg-muted rounded-md transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Home
               </Link>
               <Link
                 to="/about"
-                className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                className="px-4 py-3 text-foreground hover:bg-muted rounded-md transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 About
               </Link>
               <Link
                 to="/contact"
-                className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                className="px-4 py-3 text-foreground hover:bg-muted rounded-md transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Contact
@@ -168,14 +173,14 @@ const Navbar = () => {
                 <>
                   <Link
                     to="/user/booking"
-                    className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                    className="px-4 py-3 text-primary font-medium hover:bg-muted rounded-md transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Book Now
                   </Link>
                   <Link
                     to="/dashboard"
-                    className="px-4 py-2 text-foreground hover:bg-muted rounded-md"
+                    className="px-4 py-3 text-foreground hover:bg-muted rounded-md transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     My Bookings
@@ -183,7 +188,7 @@ const Navbar = () => {
                   {isAdmin && (
                     <Link
                       to="/admin/dashboard"
-                      className="px-4 py-2 text-primary font-medium hover:bg-muted rounded-md"
+                      className="px-4 py-3 text-primary font-medium hover:bg-muted rounded-md transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Admin Dashboard
@@ -193,7 +198,7 @@ const Navbar = () => {
               ) : (
                 <Link
                   to="/auth"
-                  className="px-4 py-2 text-primary font-medium hover:bg-muted rounded-md"
+                  className="px-4 py-3 text-primary font-medium hover:bg-muted rounded-md transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Login to Book
@@ -201,7 +206,7 @@ const Navbar = () => {
               )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </nav>
   );
