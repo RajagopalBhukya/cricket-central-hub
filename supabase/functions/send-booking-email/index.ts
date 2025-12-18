@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 interface BookingEmailRequest {
-  type: "confirmed" | "cancelled" | "rescheduled";
+  type: "confirmed" | "cancelled" | "rejected" | "rescheduled";
   userEmail: string;
   userName: string;
   groundName: string;
@@ -17,6 +17,7 @@ interface BookingEmailRequest {
   newDate?: string;
   newStartTime?: string;
   newEndTime?: string;
+  isAdminNotification?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -36,6 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const data: BookingEmailRequest = await req.json();
+    console.log("Sending email notification:", data.type, "to:", data.userEmail);
 
     let subject = "";
     let htmlContent = "";
@@ -49,7 +51,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     switch (data.type) {
       case "confirmed":
-        subject = "Booking Confirmed - Box Cricket";
+        subject = data.isAdminNotification 
+          ? "Admin Booking Confirmed - Box Cricket" 
+          : "Booking Confirmed - Box Cricket";
         htmlContent = `
           <h1>Booking Confirmed!</h1>
           <p>Hello ${data.userName},</p>
@@ -66,7 +70,20 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Hello ${data.userName},</p>
           <p>Your booking has been cancelled. Here were the details:</p>
           ${baseInfo}
+          <p>The time slot is now available for rebooking.</p>
           <p>We hope to see you again soon!</p>
+        `;
+        break;
+
+      case "rejected":
+        subject = "Booking Request Rejected - Box Cricket";
+        htmlContent = `
+          <h1>Booking Request Rejected</h1>
+          <p>Hello ${data.userName},</p>
+          <p>We're sorry, but your booking request has been rejected. Here were the details:</p>
+          ${baseInfo}
+          <p>The time slot is now available for others to book.</p>
+          <p>Please try booking a different time slot or contact us for assistance.</p>
         `;
         break;
 

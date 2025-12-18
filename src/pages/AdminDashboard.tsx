@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -41,6 +41,11 @@ import {
   Search, Download, TrendingUp, TrendingDown, LogOut, Bell, Clock,
   CheckCircle, XCircle, Home
 } from "lucide-react";
+import AdminUserSearch from "@/components/admin/AdminUserSearch";
+import AdminUserList from "@/components/admin/AdminUserList";
+import AdminUserProfileModal from "@/components/admin/AdminUserProfileModal";
+import AdminCalendarView from "@/components/admin/AdminCalendarView";
+import { useAutoCompleteBookings } from "@/hooks/useAutoCompleteBookings";
 
 interface User {
   id: string;
@@ -48,6 +53,8 @@ interface User {
   phone_number: string;
   created_at: string;
   email?: string;
+  last_active?: string;
+  is_online?: boolean;
 }
 
 interface Booking {
@@ -129,7 +136,15 @@ const AdminDashboard = () => {
   const [selectedAdminSlots, setSelectedAdminSlots] = useState<TimeSlot[]>([]);
   const [bookedSlotsForAdmin, setBookedSlotsForAdmin] = useState<{ start_time: string; end_time: string; status: string }[]>([]);
   
+  // New state for user management
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [selectedUserProfile, setSelectedUserProfile] = useState<User | null>(null);
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+  
   const navigate = useNavigate();
+  
+  // Auto-complete bookings hook
+  useAutoCompleteBookings(isAdmin);
 
   useEffect(() => {
     checkAdminAccess();
@@ -310,11 +325,21 @@ const AdminDashboard = () => {
   const activeBookings = bookings.filter(b => b.status === "active" || b.status === "confirmed");
   const pendingBookings = bookings.filter(b => b.status === "pending");
 
-  // Filtered data
-  const filteredUsers = users.filter(user =>
-    user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.phone_number.includes(searchQuery)
-  );
+  // Filtered data with enhanced search
+  const filteredUsers = useMemo(() => {
+    const query = userSearchQuery.toLowerCase();
+    return users.filter(user =>
+      user.full_name.toLowerCase().includes(query) ||
+      user.phone_number.includes(query) ||
+      (user.email?.toLowerCase().includes(query))
+    );
+  }, [users, userSearchQuery]);
+
+  // Users who have booked (for bottom user list)
+  const bookingUsers = useMemo(() => {
+    const userIdsWithBookings = new Set(bookings.map(b => b.user_id));
+    return users.filter(u => userIdsWithBookings.has(u.id));
+  }, [users, bookings]);
 
   const filteredBookings = bookings.filter(booking => {
     const matchesSearch = 
@@ -336,6 +361,38 @@ const AdminDashboard = () => {
     return matchesSearch && matchesDate && matchesStatus;
   });
 
+  // Send email notification helper
+  const sendBookingEmail = async (
+    booking: Booking, 
+    type: "confirmed" | "cancelled" | "rejected"
+  ) => {
+    try {
+      // Get user email from auth
+      const { data: authUser } = await supabase.auth.admin.getUserById(booking.user_id);
+      const userEmail = authUser?.user?.email;
+      
+      if (!userEmail) {
+        console.log("No email found for user");
+        return;
+      }
+
+      await supabase.functions.invoke("send-booking-email", {
+        body: {
+          type: type === "rejected" ? "cancelled" : type,
+          userEmail,
+          userName: booking.user_name || "User",
+          groundName: booking.ground_name || "Ground",
+          bookingDate: format(new Date(booking.booking_date), "PP"),
+          startTime: booking.start_time,
+          endTime: booking.end_time,
+          totalAmount: booking.total_amount,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to send email notification:", error);
+    }
+  };
+
   const updateBookingStatus = async (bookingId: string, status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired") => {
     const updateData: any = { status };
     
@@ -343,6 +400,9 @@ const AdminDashboard = () => {
       updateData.confirmed_at = new Date().toISOString();
       updateData.confirmed_by = adminUserId;
     }
+
+    // Find the booking for email notification
+    const booking = bookings.find(b => b.id === bookingId);
 
     const { error } = await supabase
       .from("bookings")
@@ -353,16 +413,41 @@ const AdminDashboard = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Success", description: "Booking status updated" });
+      
+      // Send email notification
+      if (booking) {
+        if (status === "confirmed") {
+          sendBookingEmail(booking, "confirmed");
+        } else if (status === "cancelled") {
+          sendBookingEmail(booking, "cancelled");
+        }
+      }
+      
       fetchBookings();
     }
   };
 
   const confirmBooking = async (bookingId: string) => {
     await updateBookingStatus(bookingId, "confirmed");
+    
+    // Send admin notification if admin booked it
+    const booking = bookings.find(b => b.id === bookingId);
+    if (booking?.booked_by === "admin") {
+      toast({
+        title: "Admin Booking Confirmed",
+        description: `Your booking for ${booking.ground_name} on ${format(new Date(booking.booking_date), "PP")} at ${booking.start_time} has been confirmed.`,
+      });
+    }
   };
 
   const rejectBooking = async (bookingId: string) => {
+    const booking = bookings.find(b => b.id === bookingId);
     await updateBookingStatus(bookingId, "cancelled");
+    
+    // Send rejection email
+    if (booking) {
+      sendBookingEmail(booking, "rejected");
+    }
   };
 
   const updatePaymentStatus = async (bookingId: string, payment_status: "paid" | "unpaid") => {
@@ -783,6 +868,13 @@ const AdminDashboard = () => {
               <CalendarDays className="w-4 h-4 mr-2" /> Bookings
             </Button>
             <Button
+              variant={activeTab === "calendar" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("calendar")}
+            >
+              <CalendarIcon className="w-4 h-4 mr-2" /> Calendar View
+            </Button>
+            <Button
               variant={activeTab === "users" ? "secondary" : "ghost"}
               className="w-full justify-start"
               onClick={() => setActiveTab("users")}
@@ -856,6 +948,14 @@ const AdminDashboard = () => {
                 onClick={() => setActiveTab("bookings")}
               >
                 <CalendarDays className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={activeTab === "calendar" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                onClick={() => setActiveTab("calendar")}
+              >
+                <CalendarIcon className="w-4 h-4" />
               </Button>
               <Button
                 variant={activeTab === "users" ? "default" : "outline"}
@@ -1699,8 +1799,55 @@ const AdminDashboard = () => {
               </div>
             </div>
           )}
+
+          {/* Calendar View Tab */}
+          {activeTab === "calendar" && (
+            <div className="space-y-4 sm:space-y-6">
+              <h2 className="text-xl sm:text-2xl font-bold">Calendar View</h2>
+              <AdminCalendarView 
+                bookings={bookings}
+                onBookingClick={(booking) => {
+                  setActiveTab("bookings");
+                  setSearchQuery(booking.user_name || "");
+                }}
+              />
+            </div>
+          )}
+
+          {/* User List at bottom of Dashboard */}
+          {activeTab === "dashboard" && (
+            <div className="mt-6">
+              <AdminUserSearch
+                searchQuery={userSearchQuery}
+                onSearchChange={setUserSearchQuery}
+                placeholder="Search users by name, email, or phone..."
+              />
+              <div className="mt-4">
+                <AdminUserList
+                  users={userSearchQuery ? filteredUsers : bookingUsers}
+                  onViewUser={(user) => {
+                    setSelectedUserProfile(user as User);
+                    setIsUserProfileOpen(true);
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </main>
       </div>
+
+      {/* User Profile Modal */}
+      <AdminUserProfileModal
+        user={selectedUserProfile}
+        isOpen={isUserProfileOpen}
+        onClose={() => {
+          setIsUserProfileOpen(false);
+          setSelectedUserProfile(null);
+        }}
+        onUserUpdated={() => {
+          fetchUsers();
+        }}
+      />
     </div>
   );
 };
