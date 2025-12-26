@@ -41,6 +41,7 @@ export default function AdminCalendarView({ bookings, onBookingClick }: AdminCal
       case "pending": return "bg-red-500";
       case "completed": return "bg-blue-500";
       case "cancelled": return "bg-gray-400";
+      case "rejected": return "bg-orange-500";
       default: return "bg-gray-400";
     }
   };
@@ -55,6 +56,8 @@ export default function AdminCalendarView({ bookings, onBookingClick }: AdminCal
       case "completed":
         return "secondary";
       case "cancelled":
+        return "outline";
+      case "rejected":
         return "outline";
       default:
         return "secondary";

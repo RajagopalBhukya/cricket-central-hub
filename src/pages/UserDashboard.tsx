@@ -218,6 +218,8 @@ const UserDashboard = () => {
         return "bg-gray-500";
       case "expired":
         return "bg-gray-500";
+      case "rejected":
+        return "bg-orange-500";
       default:
         return "bg-gray-500";
     }
@@ -237,7 +239,7 @@ const UserDashboard = () => {
     (b) => b.status === "completed" || (b.status === "active" && isBefore(parseISO(`${b.booking_date}T${b.end_time}`), new Date()))
   );
 
-  const cancelledBookings = bookings.filter((b) => b.status === "cancelled");
+  const cancelledBookings = bookings.filter((b) => b.status === "cancelled" || b.status === "rejected");
 
   if (loading) {
     return (
