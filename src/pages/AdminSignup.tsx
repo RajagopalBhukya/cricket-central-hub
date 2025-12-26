@@ -23,9 +23,6 @@ const adminSignupSchema = z.object({
 
 type AdminSignupFormData = z.infer<typeof adminSignupSchema>;
 
-// This is the secret admin code - in production this should be in environment variables
-const ADMIN_SECRET_CODE = "BOXCRICKET_ADMIN_2024";
-
 const AdminSignup = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -70,17 +67,6 @@ const AdminSignup = () => {
   const handleSignup = async (data: AdminSignupFormData) => {
     setLoading(true);
 
-    // Verify admin code
-    if (data.adminCode !== ADMIN_SECRET_CODE) {
-      toast({
-        title: "Invalid Admin Code",
-        description: "The admin code you entered is incorrect.",
-        variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
-
     try {
       // Check if phone number already exists
       const { data: existingProfile } = await supabase
@@ -115,14 +101,26 @@ const AdminSignup = () => {
       if (error) throw error;
 
       if (authData.user) {
-        // Update the user role to admin using edge function
-        const { error: roleError } = await supabase.functions.invoke('set-admin-role', {
-          body: { userId: authData.user.id }
+        // Validate admin code and set role via edge function (server-side validation)
+        const { data: roleData, error: roleError } = await supabase.functions.invoke('set-admin-role', {
+          body: { 
+            userId: authData.user.id,
+            adminCode: data.adminCode // Sent to backend for validation
+          }
         });
 
-        if (roleError) {
-          console.error("Error setting admin role:", roleError);
-          // The role might still get set by the trigger, so don't block here
+        if (roleError || roleData?.error) {
+          const errorMessage = roleData?.error || roleError?.message || "Invalid admin code";
+          
+          // If admin code is invalid, we should clean up the created user
+          // Note: The user was already created, but won't have admin role
+          toast({
+            title: "Admin Registration Failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
         }
 
         toast({
