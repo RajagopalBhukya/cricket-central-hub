@@ -1,6 +1,13 @@
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AlertTriangle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TimeSlot {
   start: string;
@@ -33,6 +40,9 @@ const TimeSlotCard = memo(({
   const isPending = isSlotBlocked && slot.status === "pending";
   const isConfirmed = isSlotBlocked && (slot.status === "confirmed" || slot.status === "active");
   const isUserBooking = slot.userId === currentUserId;
+  
+  // Show warning to other users when slot is blocked by someone else
+  const showWarningToOthers = isSlotBlocked && !isUserBooking;
 
   const getSlotColorClass = () => {
     if (slot.isPast) return "bg-muted text-muted-foreground cursor-not-allowed opacity-50";
@@ -52,6 +62,12 @@ const TimeSlotCard = memo(({
     return `₹${slot.price}`;
   };
 
+  const getWarningMessage = () => {
+    if (isPending) return "This slot has a pending booking and is not available for selection";
+    if (isConfirmed) return "This slot is already booked and confirmed";
+    return "";
+  };
+
   const handleClick = () => {
     if (isSlotBlocked) {
       onUnavailableClick?.();
@@ -63,23 +79,44 @@ const TimeSlotCard = memo(({
     }
   };
 
-  return (
+  const buttonContent = (
     <Button
       variant="ghost"
       disabled={slot.isPast}
       onClick={handleClick}
       className={cn(
-        "text-sm flex flex-col h-auto py-2 px-3 transition-all duration-200",
+        "text-sm flex flex-col h-auto py-2 px-3 transition-all duration-200 relative",
         getSlotColorClass(),
         slot.isPast && "line-through"
       )}
     >
+      {showWarningToOthers && (
+        <AlertTriangle className="absolute top-1 right-1 h-3 w-3 text-yellow-300" />
+      )}
       <span className="font-medium">{slot.start} - {slot.end}</span>
       <span className="text-xs opacity-90">
         {getStatusLabel()}
       </span>
     </Button>
   );
+
+  // Wrap with tooltip only for blocked slots to show warning
+  if (showWarningToOthers) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {buttonContent}
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[200px] text-center">
+            <p className="text-xs">{getWarningMessage()}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return buttonContent;
 });
 
 TimeSlotCard.displayName = "TimeSlotCard";
