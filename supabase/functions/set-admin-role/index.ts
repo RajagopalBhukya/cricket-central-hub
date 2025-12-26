@@ -12,7 +12,30 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, setupAdmin, email, password, fullName, phoneNumber } = await req.json();
+    const { userId, adminCode, setupAdmin, email, password, fullName, phoneNumber } = await req.json();
+
+    // Validate admin secret code from environment (server-side only)
+    const ADMIN_SECRET_CODE = Deno.env.get('ADMIN_SECRET_CODE');
+    
+    if (!ADMIN_SECRET_CODE) {
+      console.error("ADMIN_SECRET_CODE not configured in environment");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify admin code for new registrations
+    if (adminCode) {
+      if (adminCode !== ADMIN_SECRET_CODE) {
+        console.log("Invalid admin code attempt");
+        return new Response(
+          JSON.stringify({ error: "Invalid admin code" }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log("Admin code verified successfully");
+    }
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
