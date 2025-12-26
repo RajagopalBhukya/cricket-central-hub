@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { logAdminAction } from "@/hooks/useAuditLog";
 import { format, formatDistanceToNow } from "date-fns";
 import { 
   User, Mail, Phone, Clock, Calendar, Edit, Save, X,
@@ -65,6 +66,14 @@ export default function AdminUserProfileModal({
     if (user && isOpen) {
       setEditedUser({ ...user });
       fetchUserBookings(user.id);
+      
+      // Log admin viewing user profile
+      logAdminAction({
+        action: "view_profile",
+        target_user_id: user.id,
+        target_table: "profiles",
+        details: { user_name: user.full_name },
+      });
     }
   }, [user, isOpen]);
 
@@ -124,6 +133,19 @@ export default function AdminUserProfileModal({
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      // Log admin editing user profile
+      logAdminAction({
+        action: "edit_profile",
+        target_user_id: editedUser.id,
+        target_table: "profiles",
+        details: {
+          updated_fields: {
+            full_name: editedUser.full_name,
+            phone_number: editedUser.phone_number,
+          },
+        },
+      });
+      
       toast({ title: "Success", description: "User profile updated" });
       setIsEditing(false);
       onUserUpdated();
