@@ -102,6 +102,8 @@ const MyBookings = () => {
         return "bg-blue-500 hover:bg-blue-600";
       case "cancelled":
         return "bg-muted-foreground hover:bg-muted-foreground/90";
+      case "rejected":
+        return "bg-orange-500 hover:bg-orange-600";
       default:
         return "bg-muted-foreground hover:bg-muted-foreground/90";
     }
@@ -119,6 +121,8 @@ const MyBookings = () => {
         return "Completed";
       case "cancelled":
         return "Cancelled";
+      case "rejected":
+        return "Rejected";
       default:
         return status;
     }

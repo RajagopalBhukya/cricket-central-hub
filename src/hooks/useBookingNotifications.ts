@@ -53,13 +53,16 @@ export const useBookingNotifications = ({
             onBookingConfirmed?.(newBooking.id);
           }
 
-          // Check if status changed to cancelled (rejected)
-          if (newBooking.status === 'cancelled') {
+          // Check if status changed to cancelled or rejected
+          if (newBooking.status === 'cancelled' || newBooking.status === 'rejected') {
             shownNotifications.current.add(notificationKey);
             
+            const isRejected = newBooking.status === 'rejected';
             toast({
-              title: "❌ Booking Rejected",
-              description: "Your booking request has been rejected by the admin.",
+              title: isRejected ? "❌ Booking Rejected" : "❌ Booking Cancelled",
+              description: isRejected 
+                ? "Your booking request has been rejected by the admin. The slot is now available."
+                : "Your booking has been cancelled.",
               variant: "destructive",
               duration: 10000,
             });

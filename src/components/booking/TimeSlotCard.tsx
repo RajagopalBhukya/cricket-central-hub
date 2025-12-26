@@ -27,9 +27,11 @@ const TimeSlotCard = memo(({
   onSelect, 
   onUnavailableClick 
 }: TimeSlotCardProps) => {
-  const isBooked = !slot.available && !slot.isPast;
-  const isPending = isBooked && slot.status === "pending";
-  const isConfirmed = isBooked && (slot.status === "confirmed" || slot.status === "active");
+  // Slots with rejected/cancelled status should show as available
+  const isSlotBlocked = !slot.available && !slot.isPast && 
+    slot.status !== 'rejected' && slot.status !== 'cancelled';
+  const isPending = isSlotBlocked && slot.status === "pending";
+  const isConfirmed = isSlotBlocked && (slot.status === "confirmed" || slot.status === "active");
   const isUserBooking = slot.userId === currentUserId;
 
   const getSlotColorClass = () => {
@@ -38,6 +40,7 @@ const TimeSlotCard = memo(({
     if (isConfirmed && isUserBooking) return "bg-primary text-primary-foreground cursor-not-allowed";
     if (isConfirmed) return "bg-pink-500 text-white cursor-not-allowed";
     if (isSelected) return "bg-primary text-primary-foreground";
+    // Available slots (including those with rejected/cancelled status)
     return "bg-blue-500/10 border-2 border-blue-500 text-blue-700 hover:bg-blue-500/20 cursor-pointer";
   };
 
@@ -50,11 +53,12 @@ const TimeSlotCard = memo(({
   };
 
   const handleClick = () => {
-    if (isBooked) {
+    if (isSlotBlocked) {
       onUnavailableClick?.();
       return;
     }
-    if (slot.available && !slot.isPast) {
+    // Allow clicking on available slots or slots with rejected/cancelled status
+    if (!slot.isPast) {
       onSelect(slot);
     }
   };

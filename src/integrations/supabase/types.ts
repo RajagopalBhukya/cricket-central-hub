@@ -262,6 +262,7 @@ export type Database = {
         | "expired"
         | "pending"
         | "confirmed"
+        | "rejected"
       payment_status: "unpaid" | "paid"
     }
     CompositeTypes: {
@@ -398,6 +399,7 @@ export const Constants = {
         "expired",
         "pending",
         "confirmed",
+        "rejected",
       ],
       payment_status: ["unpaid", "paid"],
     },

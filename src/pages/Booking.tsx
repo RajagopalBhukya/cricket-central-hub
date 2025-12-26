@@ -80,7 +80,7 @@ const Booking = () => {
       .select("start_time, end_time")
       .eq("ground_id", selectedGround)
       .eq("booking_date", formattedDate)
-      .in("status", ["active", "completed"]);
+      .in("status", ["pending", "confirmed", "active", "completed"]);
 
     if (error) {
       console.error("Error checking availability:", error);
@@ -120,7 +120,7 @@ const Booking = () => {
       .eq("ground_id", selectedGround)
       .eq("booking_date", formattedDate)
       .eq("start_time", selectedTimeSlot.start)
-      .in("status", ["active", "completed"]);
+      .in("status", ["pending", "confirmed", "active", "completed"]);
 
     if (existingBookings && existingBookings.length > 0) {
       setLoading(false);

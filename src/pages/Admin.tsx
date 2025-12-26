@@ -46,7 +46,7 @@ interface Booking {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired";
+  status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired" | "rejected";
   payment_status: "paid" | "unpaid";
   total_amount: number;
   user_id: string;
@@ -170,7 +170,34 @@ const Admin = () => {
     if (data) setGrounds(data);
   };
 
-  const updateBookingStatus = async (bookingId: string, status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired") => {
+  const updateBookingStatus = async (bookingId: string, status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired" | "rejected") => {
+    // Use edge function for confirm/reject actions
+    if (status === "confirmed" || status === "rejected") {
+      const action = status === "confirmed" ? "confirm" : "reject";
+      const { data, error } = await supabase.functions.invoke('booking-actions', {
+        body: { action, bookingId }
+      });
+
+      if (error || data?.error) {
+        toast({ 
+          title: "Error", 
+          description: data?.error || error?.message || `Failed to ${action} booking`, 
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      toast({ 
+        title: "Success", 
+        description: status === "confirmed" 
+          ? "Booking confirmed. Slot is now locked." 
+          : "Booking rejected. Slot is now available." 
+      });
+      fetchBookings();
+      return;
+    }
+
+    // Direct update for other status changes
     const { error } = await supabase
       .from("bookings")
       .update({ status })
@@ -276,6 +303,7 @@ const Admin = () => {
       case "active": return "bg-green-500";
       case "completed": return "bg-blue-500";
       case "cancelled": return "bg-gray-500";
+      case "rejected": return "bg-orange-500";
       default: return "bg-gray-500";
     }
   };
@@ -394,7 +422,7 @@ const Admin = () => {
                           <TableCell>
                             <Select
                               value={booking.status}
-                              onValueChange={(value) => updateBookingStatus(booking.id, value as "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired")}
+                              onValueChange={(value) => updateBookingStatus(booking.id, value as "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired" | "rejected")}
                             >
                               <SelectTrigger className="w-28">
                                 <SelectValue />
@@ -405,6 +433,7 @@ const Admin = () => {
                                 <SelectItem value="active">Active</SelectItem>
                                 <SelectItem value="completed">Completed</SelectItem>
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
+                                <SelectItem value="rejected">Rejected</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>

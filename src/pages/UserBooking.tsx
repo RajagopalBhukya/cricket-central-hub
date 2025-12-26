@@ -149,7 +149,7 @@ const UserBooking = () => {
       .from("bookings")
       .select("*")
       .eq("user_id", userId)
-      .in("status", ["active"])
+      .in("status", ["pending", "confirmed", "active"])
       .order("booking_date", { ascending: true });
 
     if (bookingsData) {
@@ -370,15 +370,15 @@ const UserBooking = () => {
   const handleCancelBooking = async () => {
     if (!bookingToCancel) return;
 
-    const { error } = await supabase
-      .from("bookings")
-      .update({ status: "cancelled" })
-      .eq("id", bookingToCancel.id);
+    // Use edge function for proper validation
+    const { data, error } = await supabase.functions.invoke('booking-actions', {
+      body: { action: 'cancel', bookingId: bookingToCancel.id }
+    });
 
-    if (error) {
+    if (error || data?.error) {
       toast({
         title: "Error",
-        description: "Failed to cancel booking",
+        description: data?.error || error?.message || "Failed to cancel booking",
         variant: "destructive",
       });
     } else {

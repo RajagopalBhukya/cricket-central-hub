@@ -158,6 +158,7 @@ export default function AdminUserProfileModal({
       case "completed": return "secondary";
       case "pending": return "destructive";
       case "cancelled": return "outline";
+      case "rejected": return "outline";
       default: return "secondary";
     }
   };
@@ -341,6 +342,7 @@ function BookingItem({ booking }: { booking: UserBooking }) {
       case "completed": return "secondary";
       case "pending": return "destructive";
       case "cancelled": return "outline";
+      case "rejected": return "outline";
       default: return "secondary";
     }
   };

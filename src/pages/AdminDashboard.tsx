@@ -62,7 +62,7 @@ interface Booking {
   booking_date: string;
   start_time: string;
   end_time: string;
-  status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired";
+  status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired" | "rejected";
   payment_status: "paid" | "unpaid";
   total_amount: number;
   user_id: string;
@@ -393,7 +393,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const updateBookingStatus = async (bookingId: string, status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired") => {
+  const updateBookingStatus = async (bookingId: string, status: "pending" | "confirmed" | "active" | "cancelled" | "completed" | "expired" | "rejected") => {
     const updateData: any = { status };
     
     if (status === "confirmed" && adminUserId) {
@@ -418,8 +418,8 @@ const AdminDashboard = () => {
       if (booking) {
         if (status === "confirmed") {
           sendBookingEmail(booking, "confirmed");
-        } else if (status === "cancelled") {
-          sendBookingEmail(booking, "cancelled");
+        } else if (status === "cancelled" || status === "rejected") {
+          sendBookingEmail(booking, "rejected");
         }
       }
       
@@ -428,7 +428,21 @@ const AdminDashboard = () => {
   };
 
   const confirmBooking = async (bookingId: string) => {
-    await updateBookingStatus(bookingId, "confirmed");
+    // Use edge function for proper validation
+    const { data, error } = await supabase.functions.invoke('booking-actions', {
+      body: { action: 'confirm', bookingId }
+    });
+
+    if (error || data?.error) {
+      toast({ 
+        title: "Error", 
+        description: data?.error || error?.message || "Failed to confirm booking", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    toast({ title: "Success", description: "Booking confirmed. Slot is now locked." });
     
     // Send admin notification if admin booked it
     const booking = bookings.find(b => b.id === bookingId);
@@ -438,16 +452,42 @@ const AdminDashboard = () => {
         description: `Your booking for ${booking.ground_name} on ${format(new Date(booking.booking_date), "PP")} at ${booking.start_time} has been confirmed.`,
       });
     }
+    
+    // Send confirmation email
+    if (booking) {
+      sendBookingEmail(booking, "confirmed");
+    }
+    
+    fetchBookings();
   };
 
   const rejectBooking = async (bookingId: string) => {
-    const booking = bookings.find(b => b.id === bookingId);
-    await updateBookingStatus(bookingId, "cancelled");
+    // Use edge function for proper validation - sets status to 'rejected'
+    const { data, error } = await supabase.functions.invoke('booking-actions', {
+      body: { action: 'reject', bookingId }
+    });
+
+    if (error || data?.error) {
+      toast({ 
+        title: "Error", 
+        description: data?.error || error?.message || "Failed to reject booking", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    toast({ 
+      title: "Booking Rejected", 
+      description: "The booking has been rejected. Slot is now available for others." 
+    });
     
     // Send rejection email
+    const booking = bookings.find(b => b.id === bookingId);
     if (booking) {
       sendBookingEmail(booking, "rejected");
     }
+    
+    fetchBookings();
   };
 
   const updatePaymentStatus = async (bookingId: string, payment_status: "paid" | "unpaid") => {
@@ -732,6 +772,7 @@ const AdminDashboard = () => {
       case "active": return "bg-green-500 hover:bg-green-600";
       case "completed": return "bg-blue-500 hover:bg-blue-600";
       case "cancelled": return "bg-gray-500 hover:bg-gray-600";
+      case "rejected": return "bg-orange-500 hover:bg-orange-600";
       default: return "bg-gray-500 hover:bg-gray-600";
     }
   };
@@ -1379,6 +1420,7 @@ const AdminDashboard = () => {
                                   <SelectItem value="active">Active</SelectItem>
                                   <SelectItem value="completed">Completed</SelectItem>
                                   <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  <SelectItem value="rejected">Rejected</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TableCell>
