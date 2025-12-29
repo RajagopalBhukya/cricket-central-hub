@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import TimeSlotCard from "./TimeSlotCard";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,27 @@ const TimeSlotGrid = memo(({
   onSlotSelect,
   onUnavailableClick 
 }: TimeSlotGridProps) => {
+  // Calculate which slots are adjacent to current selection
+  const adjacentSlots = useMemo(() => {
+    if (selectedSlots.length === 0) return new Set<string>();
+    
+    const sortedSelection = [...selectedSlots].sort((a, b) => a.start.localeCompare(b.start));
+    const firstSlot = sortedSelection[0];
+    const lastSlot = sortedSelection[sortedSelection.length - 1];
+    
+    const adjacent = new Set<string>();
+    
+    // Find slot before first selected
+    const beforeSlot = slots.find(s => s.end === firstSlot.start && s.available);
+    if (beforeSlot) adjacent.add(beforeSlot.start);
+    
+    // Find slot after last selected
+    const afterSlot = slots.find(s => s.start === lastSlot.end && s.available);
+    if (afterSlot) adjacent.add(afterSlot.start);
+    
+    return adjacent;
+  }, [slots, selectedSlots]);
+
   return (
     <Card className={cn(
       "transition-all duration-300 ease-in-out",
@@ -54,6 +75,12 @@ const TimeSlotGrid = memo(({
             <div className="w-3 h-3 bg-primary rounded"></div>
             <span>Your Booking</span>
           </div>
+          {selectedSlots.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 border-2 border-dashed border-emerald-500 rounded animate-pulse"></div>
+              <span>Can Select Next</span>
+            </div>
+          )}
         </div>
 
         {/* Slots Grid */}
@@ -63,6 +90,7 @@ const TimeSlotGrid = memo(({
               key={slot.start}
               slot={slot}
               isSelected={selectedSlots.some(s => s.start === slot.start)}
+              isAdjacentToSelection={adjacentSlots.has(slot.start)}
               currentUserId={currentUserId}
               onSelect={onSlotSelect}
               onUnavailableClick={onUnavailableClick}
