@@ -279,6 +279,34 @@ const UserBooking = () => {
     setBookingMessage(null);
   };
 
+  // Helper to check if a slot is consecutive to the current selection
+  const isSlotConsecutive = (slot: TimeSlot, currentSelection: TimeSlot[]): boolean => {
+    if (currentSelection.length === 0) return true;
+    
+    const sortedSelection = [...currentSelection].sort((a, b) => a.start.localeCompare(b.start));
+    const firstSlot = sortedSelection[0];
+    const lastSlot = sortedSelection[sortedSelection.length - 1];
+    
+    // Check if slot is immediately before the first selected slot
+    if (slot.end === firstSlot.start) return true;
+    // Check if slot is immediately after the last selected slot
+    if (slot.start === lastSlot.end) return true;
+    
+    return false;
+  };
+
+  // Helper to check if removing a slot would break consecutive chain
+  const canRemoveSlot = (slot: TimeSlot, currentSelection: TimeSlot[]): boolean => {
+    if (currentSelection.length <= 1) return true;
+    
+    const sortedSelection = [...currentSelection].sort((a, b) => a.start.localeCompare(b.start));
+    const firstSlot = sortedSelection[0];
+    const lastSlot = sortedSelection[sortedSelection.length - 1];
+    
+    // Can only remove from the ends to maintain consecutive chain
+    return slot.start === firstSlot.start || slot.start === lastSlot.start;
+  };
+
   const handleTimeSlotSelect = (slot: TimeSlot) => {
     if (!slot.available) return;
     setBookingMessage(null);
@@ -286,9 +314,23 @@ const UserBooking = () => {
     const isAlreadySelected = selectedSlots.some(s => s.start === slot.start);
     
     if (isAlreadySelected) {
-      setSelectedSlots(selectedSlots.filter(s => s.start !== slot.start));
+      if (canRemoveSlot(slot, selectedSlots)) {
+        setSelectedSlots(selectedSlots.filter(s => s.start !== slot.start));
+      } else {
+        setBookingMessage({ 
+          type: 'error', 
+          text: 'You can only deselect slots from the start or end of your selection.' 
+        });
+      }
     } else {
-      setSelectedSlots([...selectedSlots, slot]);
+      if (isSlotConsecutive(slot, selectedSlots)) {
+        setSelectedSlots([...selectedSlots, slot]);
+      } else {
+        setBookingMessage({ 
+          type: 'error', 
+          text: 'Please select consecutive time slots only.' 
+        });
+      }
     }
   };
 
@@ -305,43 +347,48 @@ const UserBooking = () => {
     const formattedDate = format(new Date(selectedDate), "yyyy-MM-dd");
     const requestTimestamp = Date.now(); // Millisecond precision timestamp
     
-    // Create bookings for all selected slots with timestamp
-    const bookings = selectedSlots.map(slot => ({
+    // Sort selected slots by start time
+    const sortedSlots = [...selectedSlots].sort((a, b) => a.start.localeCompare(b.start));
+    
+    // Combine consecutive slots into a single booking
+    const firstSlot = sortedSlots[0];
+    const lastSlot = sortedSlots[sortedSlots.length - 1];
+    const totalHours = sortedSlots.length * 0.5; // Each slot is 30 minutes
+    
+    const booking = {
       ground_id: selectedGround,
       user_id: user.id,
       booking_date: formattedDate,
-      start_time: slot.start,
-      end_time: slot.end,
-      hours: 0.5, // 30-minute slots
-      total_amount: slot.price,
+      start_time: firstSlot.start,
+      end_time: lastSlot.end,
+      hours: totalHours,
+      total_amount: totalAmount,
       status: "pending" as const,
       payment_status: "unpaid" as const,
       created_at: new Date(requestTimestamp).toISOString(),
-    }));
+    };
 
     // Check for conflicts before inserting
-    for (const booking of bookings) {
-      const { data: conflict } = await supabase.rpc('check_booking_conflict', {
-        _ground_id: booking.ground_id,
-        _booking_date: booking.booking_date,
-        _start_time: booking.start_time,
-        _end_time: booking.end_time,
-      });
+    const { data: conflict } = await supabase.rpc('check_booking_conflict', {
+      _ground_id: booking.ground_id,
+      _booking_date: booking.booking_date,
+      _start_time: booking.start_time,
+      _end_time: booking.end_time,
+    });
 
-      if (conflict) {
-        setBookingLoading(false);
-        setBookingMessage({ 
-          type: 'error', 
-          text: "❌ Slot is not available" 
-        });
-        fetchBookedSlots(selectedGround, new Date(selectedDate));
-        return;
-      }
+    if (conflict) {
+      setBookingLoading(false);
+      setBookingMessage({ 
+        type: 'error', 
+        text: "❌ Slot is not available" 
+      });
+      fetchBookedSlots(selectedGround, new Date(selectedDate));
+      return;
     }
 
     const { data: insertedBookings, error } = await supabase
       .from("bookings")
-      .insert(bookings)
+      .insert([booking])
       .select("id");
 
     setBookingLoading(false);
@@ -719,47 +766,52 @@ const UserBooking = () => {
         </div>
 
         {/* Booking Summary */}
-        {selectedGround && selectedDate && selectedSlots.length > 0 && (
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>Booking Summary ({selectedSlots.length} slot{selectedSlots.length > 1 ? "s" : ""})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div>
-                  <p className="text-sm text-muted-foreground">Ground</p>
-                  <p className="font-semibold">{grounds.find(g => g.id === selectedGround)?.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Date</p>
-                  <p className="font-semibold">{format(new Date(selectedDate), "PPP")}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Selected Slots</p>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedSlots.sort((a, b) => a.start.localeCompare(b.start)).map(slot => (
-                      <Badge key={slot.start} variant="secondary" className="text-xs">
-                        {slot.start}-{slot.end} (₹{slot.price})
-                      </Badge>
-                    ))}
+        {selectedGround && selectedDate && selectedSlots.length > 0 && (() => {
+          const sortedSlots = [...selectedSlots].sort((a, b) => a.start.localeCompare(b.start));
+          const firstSlot = sortedSlots[0];
+          const lastSlot = sortedSlots[sortedSlots.length - 1];
+          const totalHours = sortedSlots.length * 0.5;
+          
+          return (
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle>Booking Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Ground</p>
+                    <p className="font-semibold">{grounds.find(g => g.id === selectedGround)?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Date</p>
+                    <p className="font-semibold">{format(new Date(selectedDate), "PPP")}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Time</p>
+                    <p className="font-semibold">{firstSlot.start} - {lastSlot.end}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Duration</p>
+                    <p className="font-semibold">{totalHours} hour{totalHours !== 1 ? 's' : ''} ({sortedSlots.length} slot{sortedSlots.length > 1 ? 's' : ''})</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total</p>
+                    <p className="font-semibold text-primary text-xl">₹{totalAmount}</p>
                   </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="font-semibold text-primary text-xl">₹{totalAmount}</p>
-                </div>
-              </div>
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={handleBooking}
-                disabled={bookingLoading}
-              >
-                {bookingLoading ? "Booking..." : `Confirm ${selectedSlots.length} Booking${selectedSlots.length > 1 ? "s" : ""}`}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={handleBooking}
+                  disabled={bookingLoading}
+                >
+                  {bookingLoading ? "Booking..." : "Confirm Booking"}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       {/* Cancel Booking Dialog */}
