@@ -141,6 +141,9 @@ const AdminDashboard = () => {
   const [selectedUserProfile, setSelectedUserProfile] = useState<User | null>(null);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   
+  // Loading state for booking actions to prevent double-clicks
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   
   // Auto-complete bookings hook
@@ -428,10 +431,15 @@ const AdminDashboard = () => {
   };
 
   const confirmBooking = async (bookingId: string) => {
+    if (actionLoadingId) return; // Prevent double-clicks
+    setActionLoadingId(bookingId);
+    
     // Use edge function for proper validation
     const { data, error } = await supabase.functions.invoke('booking-actions', {
       body: { action: 'confirm', bookingId }
     });
+
+    setActionLoadingId(null);
 
     if (error || data?.error) {
       toast({ 
@@ -439,6 +447,7 @@ const AdminDashboard = () => {
         description: data?.error || error?.message || "Failed to confirm booking", 
         variant: "destructive" 
       });
+      fetchBookings(); // Refresh to get current state
       return;
     }
     
@@ -462,10 +471,15 @@ const AdminDashboard = () => {
   };
 
   const rejectBooking = async (bookingId: string) => {
+    if (actionLoadingId) return; // Prevent double-clicks
+    setActionLoadingId(bookingId);
+    
     // Use edge function for proper validation - sets status to 'rejected'
     const { data, error } = await supabase.functions.invoke('booking-actions', {
       body: { action: 'reject', bookingId }
     });
+
+    setActionLoadingId(null);
 
     if (error || data?.error) {
       toast({ 
@@ -473,6 +487,7 @@ const AdminDashboard = () => {
         description: data?.error || error?.message || "Failed to reject booking", 
         variant: "destructive" 
       });
+      fetchBookings(); // Refresh to get current state
       return;
     }
     
@@ -1213,12 +1228,15 @@ const AdminDashboard = () => {
                             <Button 
                               onClick={() => confirmBooking(booking.id)}
                               className="bg-green-500 hover:bg-green-600"
+                              disabled={actionLoadingId === booking.id}
                             >
-                              <CheckCircle className="w-4 h-4 mr-2" /> Confirm
+                              <CheckCircle className="w-4 h-4 mr-2" /> 
+                              {actionLoadingId === booking.id ? "..." : "Confirm"}
                             </Button>
                             <Button 
                               variant="destructive"
                               onClick={() => rejectBooking(booking.id)}
+                              disabled={actionLoadingId === booking.id}
                             >
                               <XCircle className="w-4 h-4 mr-2" /> Reject
                             </Button>
@@ -1459,6 +1477,7 @@ const AdminDashboard = () => {
                                       size="sm"
                                       className="bg-green-500 hover:bg-green-600"
                                       onClick={() => confirmBooking(booking.id)}
+                                      disabled={actionLoadingId === booking.id}
                                     >
                                       <CheckCircle className="w-4 h-4" />
                                     </Button>
@@ -1466,6 +1485,7 @@ const AdminDashboard = () => {
                                       variant="destructive"
                                       size="sm"
                                       onClick={() => rejectBooking(booking.id)}
+                                      disabled={actionLoadingId === booking.id}
                                     >
                                       <XCircle className="w-4 h-4" />
                                     </Button>
