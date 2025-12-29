@@ -22,6 +22,7 @@ interface TimeSlot {
 interface TimeSlotCardProps {
   slot: TimeSlot;
   isSelected: boolean;
+  isAdjacentToSelection?: boolean;
   currentUserId?: string;
   onSelect: (slot: TimeSlot) => void;
   onUnavailableClick?: () => void;
@@ -30,6 +31,7 @@ interface TimeSlotCardProps {
 const TimeSlotCard = memo(({ 
   slot, 
   isSelected, 
+  isAdjacentToSelection = false,
   currentUserId,
   onSelect, 
   onUnavailableClick 
@@ -50,6 +52,8 @@ const TimeSlotCard = memo(({
     if (isConfirmed && isUserBooking) return "bg-primary text-primary-foreground cursor-not-allowed";
     if (isConfirmed) return "bg-pink-500 text-white cursor-not-allowed";
     if (isSelected) return "bg-primary text-primary-foreground";
+    // Highlight adjacent slots that can be selected next
+    if (isAdjacentToSelection) return "bg-emerald-500/20 border-2 border-dashed border-emerald-500 text-emerald-700 hover:bg-emerald-500/30 cursor-pointer animate-pulse";
     // Available slots (including those with rejected/cancelled status)
     return "bg-blue-500/10 border-2 border-blue-500 text-blue-700 hover:bg-blue-500/20 cursor-pointer";
   };
