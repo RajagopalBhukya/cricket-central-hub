@@ -663,28 +663,41 @@ const AdminDashboard = () => {
     const now = new Date();
     const isToday = format(adminBookingDate, "yyyy-MM-dd") === format(now, "yyyy-MM-dd");
     const currentHour = now.getHours();
+    const currentMinutes = now.getMinutes();
 
     const isDay = isDayGround(adminBookingGround);
     const startHour = isDay ? 7 : 18;
     const endHour = isDay ? 18 : 23;
-    const price = isDay ? 600 : 800;
+    const pricePerSlot = isDay ? 300 : 400; // Half of hourly rate for 30-min slots
 
+    // Generate 30-minute slots
     for (let hour = startHour; hour < endHour; hour++) {
-      const start = `${hour.toString().padStart(2, "0")}:00`;
-      const end = `${(hour + 1).toString().padStart(2, "0")}:00`;
-      const bookedSlot = bookedSlotsForAdmin.find(
-        (slot) => slot.start_time === start || (slot.start_time < end && slot.end_time > start)
-      );
-      const isBooked = !!bookedSlot;
-      const isPast = isToday && hour <= currentHour;
-      slots.push({ 
-        start, 
-        end, 
-        available: !isBooked && !isPast, 
-        isPast, 
-        price,
-        status: bookedSlot?.status 
-      });
+      for (let halfHour = 0; halfHour < 2; halfHour++) {
+        const startMinutes = halfHour * 30;
+        const endMinutes = (halfHour + 1) * 30;
+        const endHourAdjusted = endMinutes === 60 ? hour + 1 : hour;
+        const endMinutesAdjusted = endMinutes === 60 ? 0 : endMinutes;
+        
+        const start = `${hour.toString().padStart(2, "0")}:${startMinutes.toString().padStart(2, "0")}`;
+        const end = `${endHourAdjusted.toString().padStart(2, "0")}:${endMinutesAdjusted.toString().padStart(2, "0")}`;
+        
+        const bookedSlot = bookedSlotsForAdmin.find(
+          (slot) => slot.start_time === start || (slot.start_time < end && slot.end_time > start)
+        );
+        const isBooked = !!bookedSlot;
+        
+        // Check if slot is in the past (compare both hour and minutes for today)
+        const isPast = isToday && (hour < currentHour || (hour === currentHour && startMinutes <= currentMinutes));
+        
+        slots.push({ 
+          start, 
+          end, 
+          available: !isBooked && !isPast, 
+          isPast, 
+          price: pricePerSlot,
+          status: bookedSlot?.status 
+        });
+      }
     }
     return slots;
   }, [adminBookingDate, adminBookingGround, bookedSlotsForAdmin, isDayGround]);
@@ -724,7 +737,7 @@ const AdminDashboard = () => {
       booking_date: formattedDate,
       start_time: slot.start,
       end_time: slot.end,
-      hours: 1,
+      hours: 0.5, // 30-minute slots
       total_amount: slot.price,
       status: "confirmed" as const,
       payment_status: "unpaid" as const,
