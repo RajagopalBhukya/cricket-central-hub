@@ -105,7 +105,6 @@ const Contact = () => {
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Address</h3>
                     <p className="text-muted-foreground">Stumps Drive In ,Beside Duvvada Bridge Rajeeve Nagar road, City 560001 Visakhapattnam, India
-
                     <br />
                       Sports Complex, City 560001<br />
                       Karnataka, India
@@ -157,8 +156,8 @@ gamegubsys1@gmail.com<br />
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Business Hours</h3>
-                    <p className="text-muted-foreground">Monday - Friday: 6 AM - 11 PM
-Saturday - Sunday:  6 AM -  11PM<br />
+                    <p className="text-muted-foreground">Monday - Friday: 6 AM - 11 PM Saturday - Sunday:  6 AM -  11PM
+                    <br />
                       Saturday - Sunday: Open 24 Hours
                     </p>
                   </div>
