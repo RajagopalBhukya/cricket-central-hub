@@ -37,6 +37,7 @@ interface TimeSlot {
   isPast: boolean;
   price: number;
   status?: string;
+  userId?: string;
 }
 
 interface UserProfile {
@@ -56,7 +57,7 @@ interface UserBooking {
 
 const UserBooking = () => {
   const [grounds, setGrounds] = useState<Ground[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<{ start_time: string; end_time: string; status?: string }[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<{ start_time: string; end_time: string; status?: string; user_id?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -174,7 +175,7 @@ const UserBooking = () => {
     const formattedDate = format(date, "yyyy-MM-dd");
     const { data, error } = await supabase
       .from("bookings")
-      .select("start_time, end_time, status")
+      .select("start_time, end_time, status, user_id")
       .eq("ground_id", groundId)
       .eq("booking_date", formattedDate)
       .in("status", ["pending", "confirmed", "active", "completed"]);
@@ -259,7 +260,15 @@ const UserBooking = () => {
         // Check if slot is in the past (compare both hour and minutes for today)
         const isPast = isToday && (hour < currentHour || (hour === currentHour && startMinutes <= currentMinutes));
         
-        slots.push({ start, end, available: !isBooked && !isPast, isPast, price: pricePerSlot, status: bookedSlot?.status });
+        slots.push({ 
+          start, 
+          end, 
+          available: !isBooked && !isPast, 
+          isPast, 
+          price: pricePerSlot, 
+          status: bookedSlot?.status,
+          userId: bookedSlot?.user_id  // Pass the user_id so TimeSlotCard can check if it's booked by others
+        });
       }
     }
     return slots;
