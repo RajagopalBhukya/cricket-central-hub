@@ -8,16 +8,16 @@ import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import heroImage from "@/assets/box-cricket-bg.jpg";
+
 const Contact = () => {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     message: ""
   });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
@@ -31,10 +31,15 @@ const Contact = () => {
       message: ""
     });
   };
-  return <div className="min-h-screen bg-background relative">
-      <div className="fixed inset-0 bg-cover bg-center -z-10" style={{
-      backgroundImage: `url(${heroImage})`
-    }}>
+
+  return (
+    <div className="min-h-screen bg-background relative">
+      <div
+        className="fixed inset-0 bg-cover bg-center -z-10"
+        style={{
+          backgroundImage: `url(${heroImage})`
+        }}
+      >
         <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-accent/30" />
       </div>
       <Navbar />
@@ -59,31 +64,66 @@ const Contact = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="John Doe" value={formData.name} onChange={e => setFormData({
-                  ...formData,
-                  name: e.target.value
-                })} required />
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        name: e.target.value
+                      })
+                    }
+                    required
+                  />
                 </div>
                 <div>
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" value={formData.email} onChange={e => setFormData({
-                  ...formData,
-                  email: e.target.value
-                })} required />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        email: e.target.value
+                      })
+                    }
+                    required
+                  />
                 </div>
                 <div>
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" type="tel" placeholder="+91 98765 43210" value={formData.phone} onChange={e => setFormData({
-                  ...formData,
-                  phone: e.target.value
-                })} required />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        phone: e.target.value
+                      })
+                    }
+                    required
+                  />
                 </div>
                 <div>
                   <Label htmlFor="message">Message</Label>
-                  <Textarea id="message" placeholder="Tell us how we can help you..." rows={5} value={formData.message} onChange={e => setFormData({
-                  ...formData,
-                  message: e.target.value
-                })} required />
+                  <Textarea
+                    id="message"
+                    placeholder="Tell us how we can help you..."
+                    rows={5}
+                    value={formData.message}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        message: e.target.value
+                      })
+                    }
+                    required
+                  />
                 </div>
                 <Button type="submit" className="w-full" size="lg">
                   Send Message
@@ -95,7 +135,7 @@ const Contact = () => {
           {/* Contact Info */}
           <div className="space-y-6">
             <h2 className="text-3xl font-bold mb-6 text-foreground">Get in Touch</h2>
-            
+
             <Card className="border-2 bg-card/80 backdrop-blur-sm">
               <CardContent className="pt-6">
                 <div className="flex items-start space-x-4">
@@ -104,11 +144,9 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Address</h3>
-                    <p className="text-muted-foreground">Stumps Drive In ,Beside Duvvada Bridge Rajeeve Nagar road, City 560001 Visakhapattnam, India
-
-                    <br />
-                      Sports Complex, City 560001<br />
-                      Karnataka, India
+                    <p className="text-muted-foreground">
+                      Stumps Drive In, Beside Duvvada Bridge Rajeeve Nagar road,<br />
+                      Visakhapattnam 560001, India
                     </p>
                   </div>
                 </div>
@@ -140,8 +178,8 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Email</h3>
-                    <p className="text-muted-foreground">gamegubsys1@gmail.com
-support@boxcricket.com<br />
+                    <p className="text-muted-foreground">
+                      gamegubsys1@gmail.com<br />
                       support@boxcricket.com
                     </p>
                   </div>
@@ -157,11 +195,9 @@ support@boxcricket.com<br />
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold mb-2 text-card-foreground">Business Hours</h3>
-                    <p className="text-muted-foreground">Monday - Friday: 6 AM - 11 PM 
-Saturday - Sunday:  6 AM -  11PM
-
-                    <br />
-                      Saturday - Sunday: Open 24 Hours
+                    <p className="text-muted-foreground">
+                      Monday - Friday: 6 AM - 11 PM<br />
+                      Saturday - Sunday: 6 AM - 11 PM
                     </p>
                   </div>
                 </div>
@@ -177,9 +213,18 @@ Saturday - Sunday:  6 AM -  11PM
           <h2 className="text-4xl font-bold text-center mb-12 text-foreground">Find Us</h2>
           <div className="max-w-5xl mx-auto">
             <Card className="overflow-hidden bg-card/80 backdrop-blur-sm">
-              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d950.6!2d83.1578934!3d17.7006083!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a396f8a3b96c05d%3A0x353d26024494d2e6!2sShake%20Aadistha!5e0!3m2!1sen!2sin!4v1701782400000!5m2!1sen!2sin" width="100%" height="384" style={{
-              border: 0
-            }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="rounded-lg" />
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d950.6!2d83.1578934!3d17.7006083!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a396f8a3b96c05d%3A0x353d26024494d2e6!2sShake%20Aadistha!5e0!3m2!1sen!2sin!4v1701782400000!5m2!1sen!2sin"
+                width="100%"
+                height="384"
+                style={{
+                  border: 0
+                }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="rounded-lg"
+              />
             </Card>
           </div>
         </div>
@@ -191,6 +236,8 @@ Saturday - Sunday:  6 AM -  11PM
           <p>&copy; 2024 Box Cricket. All rights reserved.</p>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
+
 export default Contact;
