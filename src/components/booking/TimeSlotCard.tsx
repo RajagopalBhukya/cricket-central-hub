@@ -38,20 +38,28 @@ const TimeSlotCard = memo(({
   onSelect, 
   onUnavailableClick 
 }: TimeSlotCardProps) => {
-  // Slots with rejected/cancelled status should show as available
-  const isSlotBlocked = !slot.available && !slot.isPast && 
-    slot.status !== 'rejected' && slot.status !== 'cancelled';
-  const isPending = isSlotBlocked && slot.status === "pending";
-  const isConfirmed = isSlotBlocked && (slot.status === "confirmed" || slot.status === "active");
   const isUserBooking = slot.userId === currentUserId;
+  
+  // Check if slot is booked by another user - this takes priority
+  const isBookedByOthers = (slot.status === "confirmed" || slot.status === "active") && 
+    slot.userId && slot.userId !== currentUserId;
+  
+  // Check if slot is pending
+  const isPending = slot.status === "pending" && !slot.isPast;
+  
+  // Slot is blocked if booked by others OR pending OR (not available and not rejected/cancelled)
+  const isSlotBlocked = isBookedByOthers || isPending || 
+    (!slot.available && !slot.isPast && slot.status !== 'rejected' && slot.status !== 'cancelled');
+  
+  const isConfirmed = (slot.status === "confirmed" || slot.status === "active") && !slot.isPast;
   
   // Show warning to other users when slot is blocked by someone else
   const showWarningToOthers = isSlotBlocked && !isUserBooking;
 
   const getSlotColorClass = () => {
     if (slot.isPast) return "bg-muted text-muted-foreground cursor-not-allowed opacity-50";
-    // Show booked by others immediately with pink/rose color
-    if (isConfirmed && !isUserBooking) return "bg-rose-500 text-white cursor-not-allowed font-medium";
+    // Show booked by others immediately with pink/rose color - HIGHEST PRIORITY
+    if (isBookedByOthers) return "bg-rose-500 text-white cursor-not-allowed font-medium";
     // Show user's own confirmed booking with primary color
     if (isConfirmed && isUserBooking) return "bg-primary text-primary-foreground cursor-not-allowed";
     // Show pending slots with destructive color
