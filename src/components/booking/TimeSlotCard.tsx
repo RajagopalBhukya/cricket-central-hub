@@ -23,6 +23,7 @@ interface TimeSlotCardProps {
   slot: TimeSlot;
   isSelected: boolean;
   isAdjacentToSelection?: boolean;
+  isRecentlyBooked?: boolean;
   currentUserId?: string;
   onSelect: (slot: TimeSlot) => void;
   onUnavailableClick?: () => void;
@@ -32,6 +33,7 @@ const TimeSlotCard = memo(({
   slot, 
   isSelected, 
   isAdjacentToSelection = false,
+  isRecentlyBooked = false,
   currentUserId,
   onSelect, 
   onUnavailableClick 
@@ -94,11 +96,17 @@ const TimeSlotCard = memo(({
       className={cn(
         "text-sm flex flex-col h-auto py-2 px-3 transition-all duration-200 relative",
         getSlotColorClass(),
-        slot.isPast && "line-through"
+        slot.isPast && "line-through",
+        isRecentlyBooked && "animate-[pulse_0.5s_ease-in-out_3] ring-2 ring-rose-400 ring-offset-2"
       )}
     >
       {showWarningToOthers && (
         <AlertTriangle className="absolute top-1 right-1 h-3 w-3 text-yellow-300" />
+      )}
+      {isRecentlyBooked && (
+        <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium animate-bounce">
+          Just Booked!
+        </span>
       )}
       <span className="font-medium">{slot.start} - {slot.end}</span>
       <span className="text-xs opacity-90">
