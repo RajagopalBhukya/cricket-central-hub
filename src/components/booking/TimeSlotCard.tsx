@@ -48,9 +48,12 @@ const TimeSlotCard = memo(({
 
   const getSlotColorClass = () => {
     if (slot.isPast) return "bg-muted text-muted-foreground cursor-not-allowed opacity-50";
-    if (isPending) return "bg-destructive text-destructive-foreground cursor-not-allowed";
+    // Show booked by others immediately with pink/rose color
+    if (isConfirmed && !isUserBooking) return "bg-rose-500 text-white cursor-not-allowed font-medium";
+    // Show user's own confirmed booking with primary color
     if (isConfirmed && isUserBooking) return "bg-primary text-primary-foreground cursor-not-allowed";
-    if (isConfirmed) return "bg-pink-500 text-white cursor-not-allowed";
+    // Show pending slots with destructive color
+    if (isPending) return "bg-destructive text-destructive-foreground cursor-not-allowed";
     if (isSelected) return "bg-primary text-primary-foreground";
     // Highlight adjacent slots that can be selected next
     if (isAdjacentToSelection) return "bg-emerald-500/20 border-2 border-dashed border-emerald-500 text-emerald-700 hover:bg-emerald-500/30 cursor-pointer animate-pulse";
