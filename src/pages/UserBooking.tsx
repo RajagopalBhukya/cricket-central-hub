@@ -173,16 +173,42 @@ const UserBooking = () => {
 
   const fetchBookedSlots = async (groundId: string, date: Date) => {
     const formattedDate = format(date, "yyyy-MM-dd");
-    const { data, error } = await supabase
+    
+    // First fetch from booking_slots (public, fast, for UI)
+    const { data: slotsData, error: slotsError } = await supabase
+      .from("booking_slots")
+      .select("start_time, end_time, status, booking_id")
+      .eq("ground_id", groundId)
+      .eq("booking_date", formattedDate);
+
+    if (slotsError) {
+      console.error("Error fetching booking_slots:", slotsError);
+    }
+
+    // Also fetch user_id from bookings for the current user's own bookings
+    const { data: bookingsData, error: bookingsError } = await supabase
       .from("bookings")
-      .select("start_time, end_time, status, user_id")
+      .select("id, start_time, end_time, status, user_id")
       .eq("ground_id", groundId)
       .eq("booking_date", formattedDate)
       .in("status", ["pending", "confirmed", "active", "completed"]);
 
-    if (!error && data) {
-      setBookedSlots(data);
+    if (bookingsError) {
+      console.error("Error fetching bookings:", bookingsError);
     }
+
+    // Merge: use booking_slots for availability but add user_id from bookings
+    const mergedSlots = (slotsData || []).map(slot => {
+      const matchingBooking = bookingsData?.find(b => b.id === slot.booking_id);
+      return {
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        status: slot.status,
+        user_id: matchingBooking?.user_id
+      };
+    });
+
+    setBookedSlots(mergedSlots);
   };
 
   useEffect(() => {
@@ -191,7 +217,7 @@ const UserBooking = () => {
     }
   }, [selectedGround, selectedDate]);
 
-  // Real-time subscription for booking updates on selected ground/date
+  // Real-time subscription for booking_slots updates (fast, public table)
   useEffect(() => {
     if (!selectedGround || !selectedDate) return;
 
@@ -202,11 +228,12 @@ const UserBooking = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'bookings',
+          table: 'booking_slots',
           filter: `ground_id=eq.${selectedGround}`
         },
-        () => {
-          // Refetch booked slots when any booking changes
+        (payload) => {
+          console.log('Real-time booking_slots update:', payload);
+          // Refetch booked slots when any slot changes
           fetchBookedSlots(selectedGround, new Date(selectedDate));
         }
       )

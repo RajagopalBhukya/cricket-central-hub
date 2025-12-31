@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_slots: {
+        Row: {
+          booking_date: string
+          booking_id: string
+          created_at: string
+          end_time: string
+          ground_id: string
+          id: string
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+        }
+        Insert: {
+          booking_date: string
+          booking_id: string
+          created_at?: string
+          end_time: string
+          ground_id: string
+          id?: string
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+        }
+        Update: {
+          booking_date?: string
+          booking_id?: string
+          created_at?: string
+          end_time?: string
+          ground_id?: string
+          id?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           booked_by: string | null
