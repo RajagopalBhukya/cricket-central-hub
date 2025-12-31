@@ -40,47 +40,61 @@ const TimeSlotCard = memo(({
 }: TimeSlotCardProps) => {
   const isUserBooking = slot.userId === currentUserId && !!currentUserId;
   
-  // Check if slot is booked by another user - this takes HIGHEST priority
-  // A slot is booked by others if it has a blocking status AND is not the current user's booking
-  const hasBlockingStatus = slot.status === "confirmed" || slot.status === "active" || slot.status === "pending" || slot.status === "completed";
-  const isBookedByOthers = hasBlockingStatus && slot.userId && slot.userId !== currentUserId;
+  // STRICT STATUS-BASED LOGIC
+  // Status determines everything - no assumptions
+  const status = slot.status;
   
-  // Check if slot is pending (any pending slot blocks availability)
-  const isPending = slot.status === "pending" && !slot.isPast;
+  // Pending = Red (blocked for others, amber for own)
+  const isPending = status === "pending";
+  
+  // Confirmed/Active/Completed = Pink (blocked for all except owner display)
+  const isConfirmed = status === "confirmed" || status === "active" || status === "completed";
+  
+  // Available = Blue (no status, cancelled, or rejected)
+  const isAvailable = !status || status === "cancelled" || status === "rejected";
+  
+  // Check if blocked by another user
+  const isBlockedByOthers = (isPending || isConfirmed) && !isUserBooking;
   
   // Slot is absolutely blocked for selection if:
-  // 1. Booked by others (confirmed/active/pending/completed with different user_id)
-  // 2. Has pending status (even if no user_id visible due to RLS)
-  // 3. Not available AND not a cancelled/rejected slot
-  const isSlotBlocked = isBookedByOthers || 
-    (isPending && !isUserBooking) || 
-    (!slot.available && !slot.isPast && slot.status !== 'rejected' && slot.status !== 'cancelled');
+  // 1. It's pending and not the user's own
+  // 2. It's confirmed/active/completed (anyone's)
+  // 3. It's in the past
+  const isSlotBlocked = slot.isPast || isBlockedByOthers || (isConfirmed && !isUserBooking);
   
-  const isConfirmed = (slot.status === "confirmed" || slot.status === "active") && !slot.isPast;
-  
-  // Show warning to other users when slot is blocked by someone else
-  const showWarningToOthers = isSlotBlocked && !isUserBooking;
+  // Show warning icon for blocked slots
+  const showWarningToOthers = isBlockedByOthers && !slot.isPast;
 
+  // STRICT COLOR MAPPING:
+  // Past → Muted/Disabled
+  // Pending (others) → Red (destructive)
+  // Pending (own) → Amber
+  // Confirmed/Active (others) → Pink (rose-500)
+  // Confirmed/Active (own) → Primary (green indicator)
+  // Available/Cancelled/Rejected → Blue
   const getSlotColorClass = () => {
     if (slot.isPast) return "bg-muted text-muted-foreground cursor-not-allowed opacity-50";
-    // HIGHEST PRIORITY: Booked by others - always show pink and block
-    if (isBookedByOthers) return "bg-rose-500 text-white cursor-not-allowed font-medium";
-    // Show user's own confirmed booking with primary color
-    if (isConfirmed && isUserBooking) return "bg-primary text-primary-foreground cursor-not-allowed";
-    // Show pending slots with destructive color (blocks selection)
-    if (isPending && !isUserBooking) return "bg-destructive text-destructive-foreground cursor-not-allowed";
-    // User's own pending booking
-    if (isPending && isUserBooking) return "bg-amber-500 text-white cursor-not-allowed";
+    
+    // Pending slots
+    if (isPending) {
+      if (isUserBooking) return "bg-amber-500 text-white cursor-not-allowed font-medium";
+      return "bg-destructive text-destructive-foreground cursor-not-allowed font-medium"; // Red
+    }
+    
+    // Confirmed/Active/Completed slots
+    if (isConfirmed) {
+      if (isUserBooking) return "bg-primary text-primary-foreground cursor-not-allowed font-medium";
+      return "bg-pink-500 text-white cursor-not-allowed font-medium"; // Pink for others
+    }
+    
+    // Available slots (including cancelled/rejected)
     if (isSelected) return "bg-primary text-primary-foreground";
-    // Highlight adjacent slots that can be selected next
     if (isAdjacentToSelection) return "bg-emerald-500/20 border-2 border-dashed border-emerald-500 text-emerald-700 hover:bg-emerald-500/30 cursor-pointer animate-pulse";
-    // Available slots (including those with rejected/cancelled status)
-    return "bg-blue-500/10 border-2 border-blue-500 text-blue-700 hover:bg-blue-500/20 cursor-pointer";
+    return "bg-blue-500/10 border-2 border-blue-500 text-blue-700 hover:bg-blue-500/20 cursor-pointer"; // Blue
   };
 
   const getStatusLabel = () => {
     if (slot.isPast) return "(Past)";
-    if (isBookedByOthers) return "Booked";
     if (isPending && isUserBooking) return "Your Pending";
     if (isPending) return "Pending";
     if (isConfirmed && isUserBooking) return "Your Booking";
@@ -89,8 +103,8 @@ const TimeSlotCard = memo(({
   };
 
   const getWarningMessage = () => {
-    if (isPending) return "This slot has a pending booking and is not available for selection";
-    if (isConfirmed) return "This slot is already booked and confirmed";
+    if (isPending && !isUserBooking) return "This slot has a pending booking and is not available";
+    if (isConfirmed && !isUserBooking) return "This slot is already booked and confirmed";
     return "";
   };
 

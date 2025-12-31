@@ -105,7 +105,7 @@ const TimeSlotGrid = memo(({
       isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
     )}>
       <CardContent className="p-4">
-        {/* Legend */}
+        {/* Legend - Strict Status → Color Mapping */}
         <div className="flex flex-wrap gap-3 mb-4 text-xs sm:text-sm">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 bg-blue-500 rounded"></div>
