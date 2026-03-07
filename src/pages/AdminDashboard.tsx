@@ -39,7 +39,7 @@ import {
   Users, Calendar as CalendarIcon, MapPin, DollarSign, Trash2, Edit, Plus, 
   LayoutDashboard, UserCog, CalendarDays, Settings, BarChart3,
   Search, Download, TrendingUp, TrendingDown, LogOut, Bell, Clock,
-  CheckCircle, XCircle, Home
+  CheckCircle, XCircle, Home, Ban
 } from "lucide-react";
 import AdminUserSearch from "@/components/admin/AdminUserSearch";
 import AdminUserList from "@/components/admin/AdminUserList";
