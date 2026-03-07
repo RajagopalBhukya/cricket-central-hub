@@ -235,6 +235,18 @@ const UserBooking = () => {
           console.log('Real-time booking_slots update:', payload);
           // Refetch booked slots when any slot changes
           fetchBookedSlots(selectedGround, new Date(selectedDate));
+          
+          // Notify user when a slot becomes available (DELETE = cancelled/rejected)
+          if (payload.eventType === 'DELETE') {
+            const old = payload.old as any;
+            if (old?.start_time && old?.end_time) {
+              toast({
+                title: "🔓 Slot Now Available",
+                description: `The ${old.start_time} - ${old.end_time} slot has been freed and is now bookable!`,
+                duration: 6000,
+              });
+            }
+          }
         }
       )
       .subscribe();
