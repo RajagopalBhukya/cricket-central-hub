@@ -958,6 +958,16 @@ const AdminDashboard = () => {
               <MapPin className="w-4 h-4 mr-2" /> Grounds
             </Button>
             <Button
+              variant={activeTab === "cancelled" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("cancelled")}
+            >
+              <Ban className="w-4 h-4 mr-2" /> Cancelled Slots
+              {cancelledBookings.length > 0 && (
+                <Badge className="ml-auto bg-muted-foreground">{cancelledBookings.length}</Badge>
+              )}
+            </Button>
+            <Button
               variant={activeTab === "reports" ? "secondary" : "ghost"}
               className="w-full justify-start"
               onClick={() => setActiveTab("reports")}
@@ -1041,6 +1051,14 @@ const AdminDashboard = () => {
                 onClick={() => setActiveTab("grounds")}
               >
                 <MapPin className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={activeTab === "cancelled" ? "default" : "outline"}
+                size="sm"
+                className="flex-shrink-0"
+                onClick={() => setActiveTab("cancelled")}
+              >
+                <Ban className="w-4 h-4" />
               </Button>
               <Button
                 variant={activeTab === "reports" ? "default" : "outline"}
