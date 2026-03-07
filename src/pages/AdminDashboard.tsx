@@ -1907,7 +1907,69 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* User List at bottom of Dashboard */}
+          {/* Cancelled Bookings Tab */}
+          {activeTab === "cancelled" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Cancelled / Rejected Bookings</h2>
+              <p className="text-muted-foreground">
+                These slots have been freed and are available for rebooking by any user.
+              </p>
+              
+              {cancelledBookings.length === 0 && bookings.filter(b => b.status === "rejected").length === 0 ? (
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <CheckCircle className="w-16 h-16 text-primary mx-auto mb-4" />
+                    <p className="text-muted-foreground">No cancelled or rejected bookings</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Ground</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Booked At</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {bookings
+                            .filter(b => b.status === "cancelled" || b.status === "rejected")
+                            .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+                            .map((booking) => (
+                              <TableRow key={booking.id}>
+                                <TableCell className="font-medium">{booking.user_name}</TableCell>
+                                <TableCell>{booking.user_phone}</TableCell>
+                                <TableCell>{booking.ground_name}</TableCell>
+                                <TableCell>{format(new Date(booking.booking_date), "PP")}</TableCell>
+                                <TableCell>{booking.start_time} - {booking.end_time}</TableCell>
+                                <TableCell>₹{booking.total_amount}</TableCell>
+                                <TableCell>
+                                  <Badge className={booking.status === "cancelled" ? "bg-muted-foreground" : "bg-orange-500"}>
+                                    {booking.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {booking.created_at && format(new Date(booking.created_at), 'PPp')}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
           {activeTab === "dashboard" && (
             <div className="mt-6">
               <AdminUserSearch
