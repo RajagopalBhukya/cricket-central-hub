@@ -7,14 +7,12 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { email, phone, username } = await req.json();
-
     console.log("User login attempt:", { email, phone, username });
 
     if (!email || !phone) {
@@ -24,9 +22,8 @@ serve(async (req) => {
       );
     }
 
-    // Block admin credentials from using this endpoint (only check email, as it's the unique identifier)
+    // Block admin credentials
     const ADMIN_EMAIL = "rajagopalbhukya614@gmail.com";
-    
     if (email === ADMIN_EMAIL) {
       return new Response(
         JSON.stringify({ error: "Please use admin login with password" }),
@@ -43,7 +40,6 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -68,21 +64,23 @@ serve(async (req) => {
     let tempPassword: string;
 
     if (existingUser) {
-      // User exists - check if phone matches
+      // User exists with this email
       const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('phone_number')
+        .select('phone_number, full_name')
         .eq('id', existingUser.id)
         .single();
 
       if (profile && profile.phone_number !== phone) {
+        // Phone doesn't match - check if same name but different phone
+        // This means different person or user changed phone - reject
         return new Response(
-          JSON.stringify({ error: "Phone number does not match the registered account" }),
+          JSON.stringify({ error: "Phone number does not match the registered account. If you changed your number, please contact support." }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Check user role - if admin, don't allow passwordless login
+      // Check user role - block admin passwordless login
       const { data: roleData } = await supabaseAdmin
         .from('user_roles')
         .select('role')
@@ -99,18 +97,16 @@ serve(async (req) => {
 
       userId = existingUser.id;
       
-      // Update username if provided
-      if (username && username.trim()) {
+      // Update username if provided and different
+      if (username && username.trim() && profile && profile.full_name !== username.trim()) {
         await supabaseAdmin
           .from('profiles')
           .update({ full_name: username.trim() })
           .eq('id', userId);
       }
       
-      // Generate a new password for the session
       tempPassword = crypto.randomUUID();
       
-      // Update user password temporarily
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         password: tempPassword
       });
@@ -125,21 +121,30 @@ serve(async (req) => {
       
       console.log("Existing user found:", userId);
     } else {
-      // Check if phone already used by another account
+      // No user with this email - check if phone is already used
       const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
-        .select('id, phone_number')
+        .select('id, phone_number, full_name')
         .eq('phone_number', phone)
         .maybeSingle();
 
       if (existingProfile) {
-        return new Response(
-          JSON.stringify({ error: "This phone number is already registered with a different email" }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // Phone exists with different email
+        // Allow login: find the auth user by profile id and check email
+        const existingAuthUser = existingUsers.users.find(u => u.id === existingProfile.id);
+        
+        if (existingAuthUser) {
+          // Same phone, different email = different person trying same phone
+          // OR same person with new email
+          // We treat email as unique identifier, so reject with helpful message
+          return new Response(
+            JSON.stringify({ error: "This phone number is already registered with a different email address. Please use the registered email or contact support." }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
-      // Create new user
+      // Create new user - username can be same as existing users (not unique)
       tempPassword = crypto.randomUUID();
       const fullName = username?.trim() || email.split('@')[0];
       
@@ -166,10 +171,9 @@ serve(async (req) => {
       console.log("New user created:", userId);
     }
 
-    // Sign in the user with the temporary password
+    // Sign in with temporary password
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-    
     const signInClient = createClient(supabaseUrl, supabaseAnonKey);
     
     const { data: signInData, error: signInError } = await signInClient.auth.signInWithPassword({
