@@ -1,0 +1,1 @@
+ALTER TABLE public.bookings ALTER COLUMN hours TYPE numeric USING hours::numeric;
